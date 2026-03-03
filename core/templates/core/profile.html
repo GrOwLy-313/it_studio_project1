@@ -14,14 +14,13 @@
         h1, h2, h3 { color: #333; }
 
         .revenue-card { background: #e8f5e9 !important; border-left: 5px solid #2e7d32; }
-        .debt { color: #dc3545; font-weight: bold; }
-        .credit { color: #28a745; font-weight: bold; }
+        .debt { color: #dc3545; font-weight: bold; } /* Красный для долга */
+        .credit { color: #28a745; font-weight: bold; } /* Зеленый для баланса */
         
         .table-mini { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         .table-mini th, .table-mini td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         .table-mini th { background: #f8f9fa; }
 
-        /* Стили для формы пополнения */
         .form-recharge { display: flex; gap: 5px; }
         .form-recharge input { width: 100px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
         .btn-pay { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -39,7 +38,6 @@
             <h2>💰 Моя статистика и доход</h2>
             <div style="display: flex; gap: 40px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
                 <div>Выполнено уроков: <strong>{{ my_count }}</strong></div>
-                <div>Ваша ставка: <strong>{{ user.salary_per_lesson }} руб.</strong></div>
                 <div>Итого к выплате: <span class="salary">{{ my_salary }} руб.</span></div>
             </div>
 
@@ -49,7 +47,7 @@
                     <tr>
                         <th>Ученик</th>
                         <th>Направление</th>
-                        <th>Количество уроков</th>
+                        <th>Ставка</th> <th>Количество уроков</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,11 +55,11 @@
                     <tr>
                         <td>{{ stat.student__username }}</td>
                         <td>{{ stat.subject__name }}</td>
-                        <td><strong>{{ stat.lesson_count }}</strong></td>
+                        <td>{{ stat.rate }} руб.</td> <td><strong>{{ stat.lesson_count }}</strong></td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" style="text-align: center;">Данных по проведенным урокам пока нет</td>
+                        <td colspan="4" style="text-align: center;">Данных по проведенным урокам пока нет</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -74,7 +72,7 @@
             <div class="card revenue-card">
                 <h2>📈 Финансы студии</h2>
                 <p>Общая выручка (за выполненные): <br><strong style="font-size: 1.5em;">{{ total_revenue }} руб.</strong></p>
-                <p>Всего проведено занятий: <strong>{{ total_lessons }}</strong></p>
+                <p>Всего проведено занятий: <strong>{{ total_lessons_global }}</strong></p>
             </div>
             
             <div class="card">
@@ -111,12 +109,12 @@
 
         <h2>Статистика по учителям:</h2>
         <div class="grid">
-            {% for t in all_teachers %}
+            {% for t_data in all_teachers %}
             <div class="card teacher-stat">
-                <h3>{{ t.user.username }}</h3>
-                <p>Уроков проведено: <strong>{{ t.count }}</strong></p>
-                <p>К выплате: <span class="salary">{{ t.salary }} руб.</span></p>
-                <a href="{% url 'chat' t.user.id %}" class="chat-link">💬 Написать учителю</a>
+                <h3>{{ t_data.user.username }}</h3>
+                <p>Уроков проведено: <strong>{{ t_data.count }}</strong></p>
+                <p>К выплате: <span class="salary">{{ t_data.salary }} руб.</span></p>
+                <a href="{% url 'chat' t_data.user.id %}" class="chat-link">💬 Написать учителю</a>
             </div>
             {% endfor %}
         </div>

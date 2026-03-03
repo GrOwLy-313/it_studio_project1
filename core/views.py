@@ -20,48 +20,50 @@ def is_teacher_or_admin(user):
 
 @login_required
 def calendar_view(request):
-    # --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
+    # --- 1. АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
     now = timezone.now()
-    # Ищем уроки, время которых меньше текущего, а статус всё еще "Запланирован"
     past_lessons = Lesson.objects.filter(date_time__lt=now, status='scheduled')
     
     for lesson in past_lessons:
-        # Ищем ставку учителя за этот предмет
-        rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
-        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
+        # Списываем стоимость предмета с баланса ученика (как в твоем оригинале)
+        price = lesson.subject.price_per_lesson
         
-        # Списываем баланс и меняем статус
         lesson.status = 'done'
         lesson.student.balance -= price
         lesson.student.save()
         lesson.save()
 
-    # --- ОТОБРАЖЕНИЕ (Твой оригинальный код) ---
+    # --- 2. ФИЛЬТРАЦИЯ УРОКОВ ДЛЯ ОТОБРАЖЕНИЯ ---
+    teacher_filter_id = request.GET.get('teacher_filter')
+    
     if request.user.role == 'student':
         lessons = Lesson.objects.filter(student=request.user).order_by('date_time')
     elif request.user.role == 'teacher':
         lessons = Lesson.objects.filter(teacher=request.user).order_by('date_time')
-    else:  # Для админа показываем вообще все уроки
+    else:  # Админ
         lessons = Lesson.objects.all().order_by('date_time')
+        if teacher_filter_id:
+            lessons = lessons.filter(teacher_id=teacher_filter_id)
 
-    # Обработка создания нового занятия
+    # --- 3. ОБРАБОТКА СОЗДАНИЯ НОВОГО ЗАНЯТИЯ (ТВОЙ ОРИГИНАЛ + ПРАВКИ) ---
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
         subject_id = request.POST.get('subject')
         student_id = request.POST.get('student')
-        teacher_id = request.POST.get('teacher')
-        start_date = request.POST.get('date_time')
+        teacher_id = request.POST.get('teacher') # Используется только админом
+        start_date_str = request.POST.get('date_time')
         repeat = request.POST.get('repeat') == 'on'
 
-        if subject_id and student_id and start_date:
+        if subject_id and student_id and start_date_str:
             subject = Subject.objects.get(id=subject_id)
             student = User.objects.get(id=student_id)
             
+            # Определяем учителя
             if request.user.role == 'admin':
                 teacher = User.objects.get(id=teacher_id)
             else:
                 teacher = request.user
 
-            current_date = timezone.datetime.fromisoformat(start_date)
+            start_date = timezone.datetime.fromisoformat(start_date_str)
             iterations = 4 if repeat else 1
             
             for i in range(iterations):
@@ -69,14 +71,22 @@ def calendar_view(request):
                     subject=subject,
                     student=student,
                     teacher=teacher,
-                    date_time=current_date + timedelta(weeks=i),
+                    date_time=start_date + timedelta(weeks=i),
                     status='scheduled'
                 )
             return redirect('calendar')
 
+    # --- 4. ОГРАНИЧЕНИЕ ПРЕДМЕТОВ ДЛЯ ВЫБОРА ---
+    if request.user.role == 'admin':
+        available_subjects = Subject.objects.all()
+    else:
+        # Учитель видит только те направления, по которым у него есть ставка
+        assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
+        available_subjects = Subject.objects.filter(id__in=assigned_ids)
+
     return render(request, 'core/calendar.html', {
         'lessons': lessons,
-        'subjects': Subject.objects.all(),
+        'subjects': available_subjects,
         'students': User.objects.filter(role='student'),
         'teachers': User.objects.filter(role='teacher'),
     })
@@ -156,21 +166,51 @@ def profile_view(request):
         return redirect('calendar')
 
     # --- ЛОГИКА ДЛЯ УЧИТЕЛЯ ---
-    # Группируем выполненные уроки по ученику и предмету
-    teacher_stats = Lesson.objects.filter(teacher=request.user, status='done') \
-        .values('student__username', 'subject__name') \
-        .annotate(lesson_count=Count('id'))
+    teacher_stats = []
+    my_salary = Decimal('0.00')
+    my_total_lessons = 0
 
-    my_count = Lesson.objects.filter(teacher=request.user, status='done').count()
-    my_salary = my_count * getattr(request.user, 'salary_per_lesson', 0)
+    if request.user.role == 'teacher':
+        # Получаем все проведенные уроки конкретного учителя
+        done_lessons = Lesson.objects.filter(teacher=request.user, status='done').select_related('subject', 'student')
+        my_total_lessons = done_lessons.count()
+
+        # Группируем уроки по парам (Ученик + Предмет), чтобы посчитать количество
+        summary_data = done_lessons.values(
+            'student__username', 
+            'subject__id', 
+            'subject__name'
+        ).annotate(lesson_count=Count('id'))
+
+        for item in summary_data:
+            # Ищем ставку СТРОГО в таблице назначений TeacherRate
+            rate_obj = TeacherRate.objects.filter(
+                teacher=request.user, 
+                subject_id=item['subject__id']
+            ).first()
+            
+            # Если ставка назначена — берем её, если нет — 0.00 (никаких дефолтных 500)
+            current_rate = rate_obj.rate if rate_obj else Decimal('0.00')
+            
+            # Считаем промежуточный итог за это направление
+            subtotal = current_rate * item['lesson_count']
+            my_salary += subtotal
+
+            teacher_stats.append({
+                'student__username': item['student__username'],
+                'subject__name': item['subject__name'],
+                'lesson_count': item['lesson_count'],
+                'rate': current_rate
+            })
 
     # --- ЛОГИКА ДЛЯ АДМИНА ---
     all_teachers_data = []
     total_revenue = 0
-    students = None
+    students_list = None
 
     if request.user.role == 'admin':
-        if request.method == 'POST' and request.user.role == 'admin' and 'recharge_balance' in request.POST:
+        # Обработка пополнения баланса ученика
+        if request.method == 'POST' and 'recharge_balance' in request.POST:
             s_id = request.POST.get('student_id')
             amount = request.POST.get('amount')
             if s_id and amount:
@@ -178,34 +218,39 @@ def profile_view(request):
                 student_to_pay.balance += Decimal(amount) 
                 student_to_pay.save()
                 return redirect('profile')
-            student_to_pay = User.objects.get(id=s_id)
-            student_to_pay.balance += amount
-            student_to_pay.save()
-            return redirect('profile')
 
+        # Сбор статистики по всем учителям для админ-панели
         teachers = User.objects.filter(role='teacher')
         for t in teachers:
-            count = Lesson.objects.filter(teacher=t, status='done').count()
+            t_lessons = Lesson.objects.filter(teacher=t, status='done').select_related('subject')
+            t_salary = Decimal('0.00')
+            
+            # Для каждого урока учителя ищем ставку, назначенную админом
+            for lesson in t_lessons:
+                r = TeacherRate.objects.filter(teacher=t, subject=lesson.subject).first()
+                t_salary += r.rate if r else Decimal('0.00')
+            
             all_teachers_data.append({
                 'user': t,
-                'count': count,
-                'salary': count * getattr(t, 'salary_per_lesson', 0)
+                'count': t_lessons.count(),
+                'salary': t_salary
             })
         
-        done_lessons = Lesson.objects.filter(status='done')
-        for lesson in done_lessons:
+        # Общая выручка школы (сумма стоимостей всех проведенных занятий)
+        done_lessons_global = Lesson.objects.select_related('subject').filter(status='done')
+        for lesson in done_lessons_global:
             total_revenue += lesson.subject.price_per_lesson
             
-        students = User.objects.filter(role='student')
+        students_list = User.objects.filter(role='student')
 
     return render(request, 'core/profile.html', {
-        'my_count': my_count,
+        'my_count': my_total_lessons,
         'my_salary': my_salary,
-        'teacher_stats': teacher_stats, # Новая статистика
+        'teacher_stats': teacher_stats,
         'all_teachers': all_teachers_data,
-        'total_lessons': Lesson.objects.filter(status='done').count(),
+        'total_lessons_global': Lesson.objects.filter(status='done').count(),
         'total_revenue': total_revenue,
-        'students': students,
+        'students': students_list,
     })
 
 @login_required

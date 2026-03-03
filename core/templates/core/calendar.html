@@ -65,7 +65,25 @@
         </button>
     </form>
 </div>
-
+{% if user.role == 'admin' %}
+<div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <form method="get" style="display: flex; align-items: center; gap: 15px;">
+        <label>🔍 Фильтр по учителю:</label>
+        <select name="teacher_filter" style="width: 200px;">
+            <option value="">-- Все учителя --</option>
+            {% for t in teachers %}
+                <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                    {{ t.username }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Применить</button>
+        {% if request.GET.teacher_filter %}
+            <a href="{% url 'calendar' %}" style="color: #666; font-size: 0.9em;">Сбросить</a>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
 <table>
     <thead>
         <tr>
