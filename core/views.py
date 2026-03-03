@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Lesson, Message, User, Material, Subject, TeacherRate, TeacherStudent
+from .models import Lesson, Message, User, Material, Subject, TeacherRate, TeacherStudent, Notification
 from django.db import models
 from django.db.models import Count, Sum
 from django.utils import timezone
@@ -37,7 +37,8 @@ def calendar_view(request):
 
     # --- 2. ФИЛЬТРАЦИЯ УРОКОВ ДЛЯ ОТОБРАЖЕНИЯ ---
     teacher_filter_id = request.GET.get('teacher_filter')
-    
+    period_filter = request.GET.get('period')  # 'week', 'month', 'all'
+
     if request.user.role == 'student':
         lessons = Lesson.objects.filter(student=request.user).order_by('date_time')
     elif request.user.role == 'teacher':
@@ -46,6 +47,19 @@ def calendar_view(request):
         lessons = Lesson.objects.all().order_by('date_time')
         if teacher_filter_id:
             lessons = lessons.filter(teacher_id=teacher_filter_id)
+
+    # Фильтр по периоду
+    now = timezone.now()
+    if period_filter == 'week':
+        lessons = lessons.filter(
+            date_time__gte=now,
+            date_time__lte=now + timedelta(days=7)
+        )
+    elif period_filter == 'month':
+        lessons = lessons.filter(
+            date_time__gte=now,
+            date_time__lte=now + timedelta(days=30)
+        )
 
     # --- 3. ОБРАБОТКА СОЗДАНИЯ НОВОГО ЗАНЯТИЯ (ТВОЙ ОРИГИНАЛ + ПРАВКИ) ---
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
@@ -59,7 +73,6 @@ def calendar_view(request):
             subject = Subject.objects.get(id=subject_id)
             student = User.objects.get(id=student_id)
             
-            # Определяем учителя
             if request.user.role == 'admin':
                 teacher = User.objects.get(id=teacher_id)
             else:
@@ -68,6 +81,44 @@ def calendar_view(request):
             start_date = timezone.datetime.fromisoformat(start_date_str)
             iterations = 4 if repeat else 1
             
+            conflicts = []
+            for i in range(iterations):
+                lesson_time = start_date + timedelta(weeks=i)
+                # Проверяем есть ли у этого учителя урок в промежутке ±1 час
+                conflict = Lesson.objects.filter(
+                    teacher=teacher,
+                    status='scheduled',
+                    date_time__gte=lesson_time - timedelta(hours=1),
+                    date_time__lte=lesson_time + timedelta(hours=1),
+                ).exists()
+                if conflict:
+                    conflicts.append(lesson_time.strftime('%d.%m.%Y %H:%M'))
+            
+            if conflicts:
+                # Передаём ошибку в шаблон
+                conflict_str = ', '.join(conflicts)
+                # Нужно пересобрать контекст и вернуть с ошибкой
+                if request.user.role == 'admin':
+                    available_subjects = Subject.objects.all()
+                    students = User.objects.filter(role='student')
+                else:
+                    assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
+                    available_subjects = Subject.objects.filter(
+                        models.Q(id__in=assigned_ids) | models.Q(is_universal=True)
+                    )
+                    student_ids = TeacherStudent.objects.filter(teacher=request.user).values_list('student_id', flat=True)
+                    students = User.objects.filter(id__in=student_ids)
+                
+                return render(request, 'core/calendar.html', {
+                    'lessons': lessons,
+                    'subjects': available_subjects,
+                    'students': students,
+                    'teachers': User.objects.filter(role='teacher'),
+                    'period_filter': period_filter or 'all',
+                    'conflict_error': f'⚠ У учителя уже есть занятие в это время: {conflict_str}',
+                })
+            
+            # Конфликтов нет — создаём
             for i in range(iterations):
                 Lesson.objects.create(
                     subject=subject,
@@ -78,39 +129,47 @@ def calendar_view(request):
                 )
             return redirect('calendar')
 
-    # --- 4. ОГРАНИЧЕНИЕ ПРЕДМЕТОВ ДЛЯ ВЫБОРА ---
+    # --- 4. ОГРАНИЧЕНИЕ ПРЕДМЕТОВ И СТУДЕНТОВ ДЛЯ ВЫБОРА ---
     if request.user.role == 'admin':
         available_subjects = Subject.objects.all()
+        students = User.objects.filter(role='student')
     else:
         # Учитель видит только те направления, по которым у него есть ставка
         assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
         available_subjects = Subject.objects.filter(
             models.Q(id__in=assigned_ids) | models.Q(is_universal=True)
         )
+        # Учитель видит только назначенных ему учеников
+        student_ids = TeacherStudent.objects.filter(
+            teacher=request.user
+        ).values_list('student_id', flat=True)
+        students = User.objects.filter(id__in=student_ids)
 
     return render(request, 'core/calendar.html', {
         'lessons': lessons,
         'subjects': available_subjects,
-        'students': User.objects.filter(
-            id__in=TeacherStudent.objects.filter(teacher=request.user).values_list('student_id', flat=True)
-        ) if request.user.role == 'teacher' else User.objects.filter(role='student'),
+        'students': students,
         'teachers': User.objects.filter(role='teacher'),
+        'period_filter': period_filter or 'all',
     })
 
 @login_required
-@user_passes_test(is_admin) # Учителя больше не могут удалять
+@user_passes_test(is_admin)
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
     
-    # Если админ удаляет уже проведенный урок — возвращаем деньги ученику
     if lesson.status == 'done':
         rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
         price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
-        
         lesson.student.balance += price
         lesson.student.save()
         
     lesson.delete()
+    
+    # Если AJAX — возвращаем JSON, иначе редирект
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        return JsonResponse({'status': 'ok'})
     return redirect('calendar')
 
 @login_required
@@ -147,23 +206,23 @@ def chat_view(request, user_id):
 def update_lesson_status(request, lesson_id, status):
     lesson = get_object_or_404(Lesson, id=lesson_id)
     
-    # 1. Если статус меняется С "Проведено" на любой другой — возвращаем деньги
     if lesson.status == 'done' and status != 'done':
         rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
         price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
         lesson.student.balance += price
         lesson.student.save()
-        
-    # 2. Если статус меняется НА "Проведено" с любого другого — списываем деньги
     elif lesson.status != 'done' and status == 'done':
         rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
         price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
         lesson.student.balance -= price
         lesson.student.save()
 
-    # Сохраняем новый статус
     lesson.status = status
     lesson.save()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        return JsonResponse({'status': 'ok'})
     return redirect('calendar')
 
 @login_required
@@ -378,18 +437,39 @@ def messages_list_view(request):
 @user_passes_test(is_teacher_or_admin)
 def reschedule_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    
-    # Только учитель этого урока или админ могут переносить
+
     if request.user == lesson.teacher or request.user.role == 'admin':
         if request.method == 'POST':
             new_date = request.POST.get('new_date')
             if new_date:
-                # Если это первый перенос, сохраняем оригинал
                 if not lesson.original_date_time:
                     lesson.original_date_time = lesson.date_time
-                
+
+                old_date = lesson.date_time.strftime('%d.%m.%Y %H:%M')
                 lesson.date_time = new_date
                 lesson.save()
+
+                # Уведомление ученику
+                Notification.objects.create(
+                    user=lesson.student,
+                    text=f'Занятие "{lesson.subject.name}" перенесено '
+                         f'с {old_date} на '
+                         f'{lesson.date_time.strftime("%d.%m.%Y %H:%M")}. '
+                         f'Учитель: {lesson.teacher.username}'
+                )
+
+                # Уведомление админу
+                admins = User.objects.filter(role='admin')
+                for admin in admins:
+                    Notification.objects.create(
+                        user=admin,
+                        text=f'Учитель {lesson.teacher.username} перенёс занятие '
+                             f'"{lesson.subject.name}" '
+                             f'(ученик: {lesson.student.username}) '
+                             f'с {old_date} на '
+                             f'{lesson.date_time.strftime("%d.%m.%Y %H:%M")}'
+                    )
+
     return redirect('calendar')
 
 @login_required
@@ -543,3 +623,107 @@ def export_detailed_report(request):
     writer.writerow(['ИТОГО ЗА ПЕРИОД', '', '', '', total_rev, total_sal, total_rev - total_sal])
 
     return response
+
+@login_required
+@user_passes_test(is_admin)
+def dashboard_view(request):
+    from django.db.models.functions import TruncMonth, TruncWeek
+    import json
+
+    # --- Уроки по месяцам (последние 6 месяцев) ---
+    lessons_by_month = (
+        Lesson.objects
+        .filter(status='done')
+        .annotate(month=TruncMonth('date_time'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )[:6]
+
+    # --- Выручка по месяцам ---
+    revenue_by_month = {}
+    for lesson in Lesson.objects.filter(status='done').select_related('subject'):
+        key = lesson.date_time.strftime('%Y-%m')
+        revenue_by_month[key] = revenue_by_month.get(key, 0) + float(lesson.subject.price_per_lesson)
+
+    # --- Топ учителей по кол-ву уроков ---
+    top_teachers = (
+        Lesson.objects
+        .filter(status='done')
+        .values('teacher__username')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:5]
+    )
+
+    # --- Распределение по предметам ---
+    lessons_by_subject = (
+        Lesson.objects
+        .filter(status='done')
+        .values('subject__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    # --- Статусы всех уроков ---
+    status_counts = {
+        'done': Lesson.objects.filter(status='done').count(),
+        'scheduled': Lesson.objects.filter(status='scheduled').count(),
+        'canceled': Lesson.objects.filter(status='canceled').count(),
+    }
+
+    # --- Общие цифры ---
+    total_students = User.objects.filter(role='student').count()
+    total_teachers = User.objects.filter(role='teacher').count()
+    total_revenue = sum(
+        float(l.subject.price_per_lesson)
+        for l in Lesson.objects.filter(status='done').select_related('subject')
+    )
+    total_lessons = Lesson.objects.filter(status='done').count()
+
+    # Формируем данные для графиков
+    months_labels = [item['month'].strftime('%b %Y') for item in lessons_by_month]
+    months_data = [item['count'] for item in lessons_by_month]
+
+    revenue_labels = sorted(revenue_by_month.keys())[-6:]
+    revenue_data = [revenue_by_month[k] for k in revenue_labels]
+
+    teacher_labels = [item['teacher__username'] for item in top_teachers]
+    teacher_data = [item['count'] for item in top_teachers]
+
+    subject_labels = [item['subject__name'] for item in lessons_by_subject]
+    subject_data = [item['count'] for item in lessons_by_subject]
+
+    return render(request, 'core/dashboard.html', {
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_revenue': total_revenue,
+        'total_lessons': total_lessons,
+        'status_counts': status_counts,
+        # JSON для Chart.js
+        'months_labels': json.dumps(months_labels, ensure_ascii=False),
+        'months_data': json.dumps(months_data),
+        'revenue_labels': json.dumps(revenue_labels),
+        'revenue_data': json.dumps(revenue_data),
+        'teacher_labels': json.dumps(teacher_labels, ensure_ascii=False),
+        'teacher_data': json.dumps(teacher_data),
+        'subject_labels': json.dumps(subject_labels, ensure_ascii=False),
+        'subject_data': json.dumps(subject_data),
+    })
+
+@login_required
+def notifications_view(request):
+    notifications = Notification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')[:50]
+    
+    # Помечаем все как прочитанные при открытии страницы
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    
+    return render(request, 'core/notifications.html', {
+        'notifications': notifications
+    })
+
+@login_required
+def mark_notification_read(request, notif_id):
+    Notification.objects.filter(id=notif_id, user=request.user).update(is_read=True)
+    return redirect('notifications')

@@ -199,6 +199,25 @@
             cursor: pointer; transition: all 0.2s; white-space: nowrap;
         }
         .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
+        
+        .period-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted2);
+        font-family: 'Manrope', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .period-btn:hover { color: var(--text); border-color: var(--accent); }
+    .period-btn-active {
+        background: var(--accent) !important;
+        color: white !important;
+        border-color: var(--accent) !important;
+    }
     </style>
 </head>
 <body>
@@ -213,6 +232,10 @@
         <div class="role">{{ user.get_role_display }}</div>
     </div>
 
+    {% if user.role == 'admin' %}
+        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
+    {% endif %}
+
     <a href="{% url 'calendar' %}" class="nav-item active">
         <span class="icon">📅</span> Расписание
     </a>
@@ -220,6 +243,12 @@
         <span class="icon">💬</span> Сообщения
         {% if unread_count > 0 %}
             <span class="nav-badge">{{ unread_count }}</span>
+        {% endif %}
+    </a>
+    <a href="{% url 'notifications' %}" class="nav-item">
+        <span class="icon">🔔</span> Уведомления
+        {% if notif_count > 0 %}
+            <span class="nav-badge">{{ notif_count }}</span>
         {% endif %}
     </a>
     {% if user.role != 'student' %}
@@ -275,13 +304,39 @@
     </div>
     {% endif %}
 
+    <!-- Фильтр по периоду — для всех -->
+    <div style="margin-bottom:20px;">
+        <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            {% if request.GET.teacher_filter %}
+                <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
+            {% endif %}
+            <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
+            <button type="submit" name="period" value="all"
+                class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">
+                Все
+            </button>
+            <button type="submit" name="period" value="week"
+                class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">
+                Неделя
+            </button>
+            <button type="submit" name="period" value="month"
+                class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">
+                Месяц
+            </button>
+        </form>
+    </div>
+
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
                     <th>Дата и время</th>
-                    <th>Направление</th>
-                    <th>{% if user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</th>
+                    {% if user.role != 'student' %}<th>Направление</th>{% endif %}
+                    <th>
+                        {% if user.role == 'admin' %}Учитель / Ученик
+                        {% elif user.role == 'student' %}Учитель
+                        {% else %}Ученик{% endif %}
+                    </th>
                     <th>Статус</th>
                     <th>Связь</th>
                 </tr>
@@ -298,26 +353,36 @@
                             {% endif %}
                         </div>
                     </td>
+                    {% if user.role != 'student' %}
                     <td><span class="subject-pill">{{ lesson.subject.name }}</span></td>
+                    {% endif %}
                     <td style="font-weight:600;">
-                        {% if user.role == 'student' %}{{ lesson.teacher.username }}
-                        {% else %}{{ lesson.student.username }}{% endif %}
+                        {% if user.role == 'student' %}
+                            {{ lesson.teacher.username }}
+                        {% elif user.role == 'admin' %}
+                            <div>👨‍🏫 {{ lesson.teacher.username }}</div>
+                            <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.username }}</div>
+                        {% else %}
+                            {{ lesson.student.username }}
+                        {% endif %}
                     </td>
                     <td>
                         {% if user.role == 'teacher' or user.role == 'admin' %}
                             <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
-                                <select class="status-select" onchange="window.location.href=this.value;">
-                                    <option value="{% url 'update_status' lesson.id 'scheduled' %}" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
-                                    <option value="{% url 'update_status' lesson.id 'done' %}" {% if lesson.status == 'done' %}selected{% endif %}>✅ Проведён</option>
-                                    <option value="{% url 'update_status' lesson.id 'canceled' %}" {% if lesson.status == 'canceled' %}selected{% endif %}>❌ Отменён</option>
+                                <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
+                                    <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
+                                    <option value="done" {% if lesson.status == 'done' %}selected{% endif %}>✅ Проведён</option>
+                                    <option value="canceled" {% if lesson.status == 'canceled' %}selected{% endif %}>❌ Отменён</option>
                                 </select>
-                                <form action="{% url 'reschedule_lesson' lesson.id %}" method="post" class="reschedule-form">
+                                <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
                                     {% csrf_token %}
                                     <input type="datetime-local" name="new_date" required>
                                     <button type="submit" class="btn-reschedule">Перенести</button>
                                 </form>
                                 {% if user.role == 'admin' %}
-                                    <a href="{% url 'delete_lesson' lesson.id %}" class="btn-delete-lesson" onclick="return confirm('Удалить занятие?')">🗑 Удалить</a>
+                                    <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">
+                                        🗑 Удалить
+                                    </button>
                                 {% endif %}
                             </div>
                         {% else %}
@@ -337,12 +402,18 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr class="empty-row"><td colspan="5">📭 Занятий пока нет</td></tr>
+                <tr class="empty-row"><td colspan="{% if user.role == 'student' %}4{% else %}5{% endif %}">📭 Занятий пока нет</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-
+    {% if conflict_error %}
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
+                border-radius:10px;padding:14px 18px;margin-bottom:20px;
+                color:#fca5a5;font-size:14px;font-weight:600;">
+        {{ conflict_error }}
+    </div>
+    {% endif %}
     {% if user.role != 'student' %}
     <div class="add-form-card">
         <h3>➕ Добавить новое занятие</h3>
@@ -391,15 +462,122 @@
 </main>
 
 <script>
-window.onload = function() {
-    let now = new Date();
-    now.setDate(now.getDate() + 1);
-    now.setHours(16, 0, 0, 0);
-    let pad = n => String(n).padStart(2,'0');
-    let val = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
-    let inp = document.getElementById('lesson_date_time');
-    if (inp) inp.value = val;
-}
+    const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+    // Удаление урока без перезагрузки
+    async function deleteLesson(btn) {
+        const lessonId = btn.dataset.lessonId;
+        if (!confirm('Удалить занятие?')) return;
+        
+        const row = btn.closest('tr');
+        row.style.opacity = '0.5';
+        row.style.transition = 'opacity 0.3s';
+
+        try {
+            const resp = await fetch(`/lesson/delete/${lessonId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (resp.ok) {
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            } else {
+                row.style.opacity = '1';
+                alert('Ошибка при удалении');
+            }
+        } catch(e) {
+            row.style.opacity = '1';
+            alert('Ошибка соединения');
+        }
+    }
+
+    // Смена статуса без перезагрузки
+    async function updateStatus(select) {
+        const lessonId = select.dataset.lessonId;
+        const status = select.value;
+        const row = select.closest('tr');
+        select.disabled = true;
+
+        try {
+            const resp = await fetch(`/lesson/${lessonId}/status/${status}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!resp.ok) {
+                alert('Ошибка при смене статуса');
+            }
+        } catch(e) {
+            alert('Ошибка соединения');
+        } finally {
+            select.disabled = false;
+        }
+    }
+
+    // Перенос урока без перезагрузки
+    async function rescheduleLesson(event, form) {
+        event.preventDefault();
+        const lessonId = form.dataset.lessonId;
+        const input = form.querySelector('input[name="new_date"]');
+        const btn = form.querySelector('button');
+        const row = form.closest('tr');
+        
+        btn.textContent = '...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('new_date', input.value);
+        formData.append('csrfmiddlewaretoken', CSRF);
+
+        try {
+            const resp = await fetch(`/lesson/reschedule/${lessonId}/`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            if (resp.ok) {
+                // Обновляем дату в строке без reload
+                const dateCell = row.querySelector('.datetime');
+                const dayCell = row.querySelector('.day');
+                const newDate = new Date(input.value);
+                
+                dateCell.textContent = newDate.toLocaleDateString('ru-RU', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                }) + ' · ' + newDate.toLocaleTimeString('ru-RU', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+
+                // Мигаем строкой — визуальный фидбек
+                row.style.background = 'rgba(16,185,129,0.08)';
+                setTimeout(() => row.style.background = '', 1500);
+                
+                btn.textContent = '✓';
+                setTimeout(() => btn.textContent = 'Перенести', 2000);
+            } else {
+                alert('Ошибка при переносе');
+                btn.textContent = 'Перенести';
+            }
+        } catch(e) {
+            alert('Ошибка соединения');
+            btn.textContent = 'Перенести';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+    window.onload = function() {
+        let now = new Date();
+        now.setDate(now.getDate() + 1);
+        now.setHours(16, 0, 0, 0);
+        let pad = n => String(n).padStart(2,'0');
+        let val = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+        let inp = document.getElementById('lesson_date_time');
+        if (inp) inp.value = val;
+    }
 </script>
 </body>
 </html>

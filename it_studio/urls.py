@@ -20,4 +20,7 @@ urlpatterns = [
     path('export/lessons/', views.export_lessons_csv, name='export_lessons_csv'),
     path('reports/', views.reports_page, name='reports_page'),
     path('reports/export/', views.export_detailed_report, name='export_detailed_report'),
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('notifications/', views.notifications_view, name='notifications'),
+    path('notifications/read/<int:notif_id>/', views.mark_notification_read, name='notif_read'),
 ]

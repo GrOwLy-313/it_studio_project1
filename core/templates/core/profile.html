@@ -98,8 +98,17 @@
         <div class="name">{{ user.username }}</div>
         <div class="role">{{ user.get_role_display }}</div>
     </div>
+    {% if user.role == 'admin' %}
+        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
+    {% endif %}
     <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
     <a href="{% url 'messages_list' %}" class="nav-item"><span class="icon">💬</span> Сообщения</a>
+    <a href="{% url 'notifications' %}" class="nav-item">
+        <span class="icon">🔔</span> Уведомления
+        {% if notif_count > 0 %}
+            <span class="nav-badge">{{ notif_count }}</span>
+        {% endif %}
+    </a>
     <a href="{% url 'profile' %}" class="nav-item active"><span class="icon">👤</span> Личный кабинет</a>
     <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
     {% if user.role == 'admin' %}
