@@ -2,25 +2,153 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Вход в систему</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITишник — Вход</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 300px; }
-        h2 { text-align: center; color: #007bff; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
+        :root {
+            --bg: #0a0e1a;
+            --surface: #111827;
+            --surface2: #1a2235;
+            --border: #1e2d47;
+            --accent: #3b82f6;
+            --accent2: #06b6d4;
+            --green: #10b981;
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --danger: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 20s linear infinite;
+        }
+        @keyframes gridMove {
+            0% { transform: translate(0,0); }
+            100% { transform: translate(40px,40px); }
+        }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.12; animation: float 8s ease-in-out infinite; }
+        .orb1 { width: 400px; height: 400px; background: var(--accent); top: -100px; left: -100px; }
+        .orb2 { width: 300px; height: 300px; background: var(--accent2); bottom: -50px; right: -50px; animation-delay: -4s; }
+        @keyframes float {
+            0%,100% { transform: translate(0,0); }
+            50% { transform: translate(20px,-20px); }
+        }
+        .login-wrapper {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 420px; padding: 20px;
+            animation: slideUp 0.6s cubic-bezier(0.16,1,0.3,1);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-area { text-align: center; margin-bottom: 32px; }
+        .logo-badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            padding: 10px 22px; border-radius: 50px; margin-bottom: 16px;
+        }
+        .logo-badge span { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 18px; color: white; letter-spacing: 1px; }
+        .logo-area h1 { font-size: 28px; font-weight: 800; color: var(--text); }
+        .logo-area p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 20px; padding: 36px; position: relative; overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px;
+        }
+        .input-wrap { position: relative; }
+        .input-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            font-size: 16px; color: var(--muted); pointer-events: none;
+        }
+        .form-group input {
+            width: 100%; padding: 14px 14px 14px 44px;
+            background: var(--surface2); border: 1.5px solid var(--border);
+            border-radius: 12px; color: var(--text);
+            font-family: 'Manrope', sans-serif; font-size: 15px;
+            transition: all 0.2s; outline: none;
+        }
+        .form-group input:focus {
+            border-color: var(--accent); background: #162032;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+        }
+        .form-group input::placeholder { color: var(--muted); }
+        .btn-login {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--accent), #2563eb);
+            border: none; border-radius: 12px; color: white;
+            font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; margin-top: 8px; letter-spacing: 0.3px;
+        }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59,130,246,0.4); }
+        .btn-login:active { transform: translateY(0); }
+        .footer-text { text-align: center; margin-top: 24px; color: var(--muted); font-size: 12px; }
+        .footer-text span { font-family: 'JetBrains Mono', monospace; color: var(--accent2); }
+        .errorlist {
+            background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+            list-style: none; color: #fca5a5; font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h2>ITишник: Вход</h2>
-        <form method="post">
-            {% csrf_token %}
-            <input type="text" name="username" placeholder="Логин" required>
-            <input type="password" name="password" placeholder="Пароль" required>
-            <button type="submit">Войти</button>
-        </form>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="login-wrapper">
+        <div class="logo-area">
+            <div class="logo-badge"><span>⚡ ITишник</span></div>
+            <h1>Добро пожаловать</h1>
+            <p>Система управления студией программирования</p>
+        </div>
+        <div class="card">
+            {% if form.errors %}
+                <ul class="errorlist"><li>Неверный логин или пароль. Попробуйте ещё раз.</li></ul>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Логин</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">👤</span>
+                        <input type="text" name="username" placeholder="Введите логин" required autofocus>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" name="password" placeholder="Введите пароль" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login">Войти в систему →</button>
+            </form>
+        </div>
+        <div class="footer-text"><span>ITishnik Studio</span> · Система внутреннего управления</div>
     </div>
 </body>
 </html>
