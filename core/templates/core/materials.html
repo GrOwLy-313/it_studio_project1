@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Учебные материалы</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .material-item { border-left: 5px solid #007bff; padding-left: 15px; margin-bottom: 20px; }
+        .author { font-size: 0.8em; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 База учебных материалов</h1>
+        <a href="{% url 'calendar' %}">← В календарь</a>
+        <hr>
+
+        <div class="card">
+            <h3>Добавить новый материал</h3>
+            <form method="post">
+                {% csrf_token %}
+                <input type="text" name="title" placeholder="Название (например, Курс по Python)" required>
+                <textarea name="content" rows="4" placeholder="Описание или ссылка на файл" required></textarea>
+                <button type="submit">Опубликовать</button>
+            </form>
+        </div>
+
+        <h2>Все материалы:</h2>
+        {% for m in materials %}
+            <div class="card material-item">
+                <h4>{{ m.title }}</h4>
+                <p>{{ m.content|linebreaks }}</p>
+                <div class="author">Добавил: {{ m.author.username }} | {{ m.created_at|date:"d.m.Y" }}</div>
+            </div>
+        {% empty %}
+            <p>Материалов пока нет.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

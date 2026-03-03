@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мои сообщения</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .header { background: #007bff; color: white; padding: 15px; text-align: center; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; text-decoration: none; color: #333; }
+        .user-item:hover { background: #f8f9fa; }
+        .role-badge { font-size: 0.8em; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px; }
+        .btn-back { display: block; text-align: center; margin-top: 20px; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>📨 Мои диалоги</h2>
+        </div>
+        {% for u in users %}
+            <a href="{% url 'chat' u.id %}" class="user-item">
+                <div>
+                    <strong>{{ u.username }}</strong>
+                    <span class="role-badge">{{ u.get_role_display }}</span>
+                </div>
+                <span>💬 Написать</span>
+            </a>
+        {% empty %}
+            <p style="padding: 20px; text-align: center;">У вас пока нет доступных контактов.</p>
+        {% endfor %}
+    </div>
+    <a href="{% url 'calendar' %}" class="btn-back">← Назад в календарь</a>
+</body>
+</html>

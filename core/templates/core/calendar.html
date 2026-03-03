@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Расписание ITишник</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 20px; }
+        .header { background: #007bff; color: white; padding: 1rem; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #666; }
+        .status { padding: 5px 10px; border-radius: 4px; font-size: 0.9em; }
+        .status-scheduled { background: #fff3cd; color: #856404; }
+        .status-done { background: #28a745; color: white; border: none; }
+        .status-done:hover { background: #218838; }
+        .status-canceled { background: #dc3545; color: white; border: none; }
+        .status-canceled:hover { background: #c82333; }
+        .user-info { font-weight: bold; }
+        .chat-link { color: #007bff; text-decoration: none; font-weight: bold; }
+        .chat-link:hover { text-decoration: underline; }
+        
+        .add-form-card { background: white; padding: 25px; border-radius: 8px; margin-top: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        input, select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn-submit { background: #28a745; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-submit:hover { background: #218838; }
+
+        .btn-delete { color: #dc3545; text-decoration: none; font-size: 1.1em; margin-left: 10px; vertical-align: middle; }
+        
+        /* Стиль для пометки переноса */
+        .rescheduled-label { color: #d9534f; font-size: 0.75em; margin-top: 4px; display: block; }
+        .reschedule-form { margin-top: 10px; border-top: 1px dashed #ddd; padding-top: 10px; }
+        .btn-reschedule { background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Студия "ITишник"</h1>
+        <p>
+            Вы вошли как: <span class="user-info">{{ user.username }}</span> ({{ user.get_role_display }})
+            <a href="{% url 'messages_list' %}" style="text-decoration: none; margin-left: 10px;">
+                {% if unread_count > 0 %}
+                    <span style="background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">
+                        ✉ {{ unread_count }} новых
+                    </span>
+                {% else %}
+                    <span style="color: white; border: 1px solid white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">
+                        ✉ Сообщения
+                    </span>
+                {% endif %}
+            </a>
+        </p>
+        {% if user.role != 'student' %}
+            <a href="{% url 'profile' %}" style="color: white; margin-left: 15px;">👤 Личный кабинет</a>
+            <a href="{% url 'materials' %}" style="color: white; margin-left: 15px;">📚 Материалы</a>
+        {% endif %}
+    </div>
+    <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background:none; border:none; color:white; cursor:pointer; font-size:16px; text-decoration:underline; padding:0;">
+            Выйти
+        </button>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Дата и день недели</th>
+            <th>Направление</th>
+            <th>{% if user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</th>
+            <th>Статус</th>
+            <th>Связь</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lesson in lessons %}
+        <tr>
+            <td>
+                <strong style="color: #007bff; text-transform: capitalize;">{{ lesson.date_time|date:"l" }}</strong><br>
+                {{ lesson.date_time|date:"d.m.Y H:i" }}
+                
+                {% if lesson.original_date_time %}
+                    <span class="rescheduled-label">⚠️ Перенесено (было: {{ lesson.original_date_time|date:"d.m.Y H:i" }})</span>
+                {% endif %}
+            </td>
+            <td>{{ lesson.subject.name }}</td>
+            <td>
+                {% if user.role == 'student' %}
+                    {{ lesson.teacher.username }}
+                {% else %}
+                    {{ lesson.student.username }}
+                {% endif %}
+            </td>
+            <td>
+                {% if user.role == 'teacher' or user.role == 'admin' %}
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <div style="font-size: 0.8em; margin-bottom: 2px;">
+                            Сейчас: <b>{{ lesson.get_status_display }}</b>
+                            <a href="{% url 'delete_lesson' lesson.id %}" class="btn-delete" title="Удалить" onclick="return confirm('Удалить занятие?')">🗑</a>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <a href="{% url 'update_status' lesson.id 'done' %}" class="status status-done" style="text-decoration: none; font-size: 0.7em;">Выполнено</a>
+                            <a href="{% url 'update_status' lesson.id 'canceled' %}" class="status status-canceled" style="text-decoration: none; font-size: 0.7em;">Отмена</a>
+                        </div>
+                        
+                        <form action="{% url 'reschedule_lesson' lesson.id %}" method="post" class="reschedule-form">
+                            {% csrf_token %}
+                            <input type="datetime-local" name="new_date" required style="font-size: 0.7em; padding: 3px;">
+                            <button type="submit" class="btn-reschedule">Перенести</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <span class="status status-{{ lesson.status }}">
+                        {{ lesson.get_status_display }}
+                    </span>
+                {% endif %}
+            </td>
+            <td>
+                {% if user.role == 'student' %}
+                    <a href="{% url 'chat' lesson.teacher.id %}" class="chat-link">💬 Чат с учителем</a>
+                {% else %}
+                    <a href="{% url 'chat' lesson.student.id %}" class="chat-link">💬 Чат с учеником</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" style="text-align: center;">Занятий пока нет</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if user.role != 'student' %}
+<div class="add-form-card">
+    <h3>➕ Добавить новое занятие</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-grid">
+            {% if user.role == 'admin' %}
+            <div class="form-group">
+                <label>Учитель:</label>
+                <select name="teacher" required>
+                    <option value="">-- Выберите учителя --</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.id }}">{{ t.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <label>Направление:</label>
+                <select name="subject" required>
+                    <option value="">-- Выберите --</option>
+                    {% for s in subjects %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ученик:</label>
+                <select name="student" required>
+                    <option value="">-- Выберите --</option>
+                    {% for u in students %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Дата и время:</label>
+                <input type="datetime-local" id="lesson_date_time" name="date_time" required>
+            </div>
+            <div class="form-group">
+                <label style="flex-direction: row; cursor: pointer; display: flex; align-items: center;">
+                    <input type="checkbox" name="repeat" style="width: auto; margin-right: 5px;"> 
+                    Повторить на месяц (4 занятия)
+                </label>
+            </div>
+            <button type="submit" class="btn-submit">Создать</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+<script>
+    // Скрипт установит дефолтное время на 16:00 следующего дня
+    window.onload = function() {
+        let now = new Date();
+        now.setDate(now.getDate() + 1); // Завтра
+        now.setHours(16, 0, 0, 0); // Ровно 16:00
+        
+        let year = now.getFullYear();
+        let month = (now.getMonth() + 1).toString().padStart(2, '0');
+        let day = now.getDate().toString().padStart(2, '0');
+        let hours = now.getHours().toString().padStart(2, '0');
+        let minutes = now.getMinutes().toString().padStart(2, '0');
+        
+        let formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+        document.getElementById('lesson_date_time').value = formattedDate;
+    }
+</script>
+</body>
+</html>
