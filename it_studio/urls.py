@@ -33,4 +33,5 @@ urlpatterns = [
     path('homework/<int:hw_id>/status/<str:status>/', views.update_homework_status, name='homework_status'),
     path('chat/<int:user_id>/poll/', views.chat_poll, name='chat_poll'),
     path('chat/<int:user_id>/send/', views.chat_send, name='chat_send'),
+    path('archive/', views.archive_view, name='archive'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

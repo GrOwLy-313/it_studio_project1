@@ -15,17 +15,12 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-        /* SIDEBAR NAV */
         .sidebar {
             position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
             background: var(--surface); border-right: 1px solid var(--border);
             display: flex; flex-direction: column; z-index: 100; padding: 24px 0;
         }
-        .sidebar-logo {
-            padding: 0 20px 24px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 16px;
-        }
+        .sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
         .sidebar-logo .badge {
             display: inline-flex; align-items: center; gap: 8px;
             background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -34,10 +29,7 @@
         }
         .sidebar-user { padding: 12px 20px; margin-bottom: 8px; }
         .sidebar-user .name { font-weight: 700; font-size: 14px; }
-        .sidebar-user .role {
-            font-size: 11px; color: var(--accent2); font-weight: 600;
-            text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
-        }
+        .sidebar-user .role { font-size: 11px; color: var(--accent2); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
         .nav-item {
             display: flex; align-items: center; gap: 12px;
             padding: 12px 20px; color: var(--muted2); text-decoration: none;
@@ -60,11 +52,49 @@
         }
         .btn-logout:hover { background: rgba(239,68,68,0.2); }
 
-        /* MAIN CONTENT */
         .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
-        .page-header { margin-bottom: 28px; }
+        .page-header { margin-bottom: 20px; }
         .page-header h1 { font-size: 26px; font-weight: 800; }
         .page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+        /* ВКЛАДКИ */
+        .tabs {
+            display: flex; gap: 4px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 4px;
+            margin-bottom: 24px; width: fit-content;
+        }
+        .tab-btn {
+            padding: 9px 24px; border-radius: 9px; border: none;
+            font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; color: var(--muted2);
+            background: transparent; text-decoration: none; display: inline-flex;
+            align-items: center; gap: 8px;
+        }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active {
+            background: var(--accent); color: white;
+            box-shadow: 0 2px 12px rgba(59,130,246,0.35);
+        }
+        .tab-btn.archive-active {
+            background: var(--surface2); color: var(--muted2);
+            border: 1px solid var(--border);
+        }
+        .tab-btn.archive-active.active {
+            background: rgba(245,158,11,0.15);
+            color: var(--yellow);
+            border-color: rgba(245,158,11,0.3);
+            box-shadow: 0 2px 12px rgba(245,158,11,0.15);
+        }
+
+        /* Архивный баннер */
+        .archive-banner {
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+            font-size: 13px; color: var(--yellow); font-weight: 600;
+        }
 
         /* FILTER BAR */
         .filter-bar {
@@ -73,7 +103,7 @@
             display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
         }
         .filter-bar label { color: var(--muted); font-size: 13px; font-weight: 600; }
-        .filter-bar select {
+        .filter-bar select, .filter-bar input[type="month"] {
             background: var(--surface2); border: 1px solid var(--border);
             border-radius: 8px; color: var(--text); padding: 8px 12px;
             font-family: 'Manrope', sans-serif; font-size: 13px; outline: none;
@@ -94,11 +124,19 @@
         }
         .btn-export:hover { background: rgba(16,185,129,0.2); }
 
-        /* TABLE */
-        .table-wrap {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 16px; overflow: hidden;
+        /* PERIOD BUTTONS — только для расписания */
+        .period-bar { margin-bottom: 20px; }
+        .period-btn {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--surface); color: var(--muted2);
+            font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
         }
+        .period-btn:hover { color: var(--text); border-color: var(--accent); }
+        .period-btn-active { background: var(--accent) !important; color: white !important; border-color: var(--accent) !important; }
+
+        /* TABLE */
+        .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
         thead th {
             padding: 14px 18px; text-align: left;
@@ -121,7 +159,6 @@
             padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600;
         }
 
-        /* STATUS */
         .status-badge {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
@@ -168,7 +205,6 @@
             transition: all 0.2s;
         }
         .chat-btn:hover { background: rgba(6,182,212,0.2); }
-
         .empty-row td { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; }
 
         /* ADD FORM */
@@ -176,7 +212,7 @@
             background: var(--surface); border: 1px solid var(--border);
             border-radius: 16px; padding: 28px; margin-top: 24px;
         }
-        .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+        .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
@@ -199,87 +235,48 @@
             cursor: pointer; transition: all 0.2s; white-space: nowrap;
         }
         .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
-        
-        .period-btn {
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--muted2);
-        font-family: 'Manrope', sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .period-btn:hover { color: var(--text); border-color: var(--accent); }
-    .period-btn-active {
-        background: var(--accent) !important;
-        color: white !important;
-        border-color: var(--accent) !important;
-    }
-    .subject-colors {
-        --c1: #3b82f6; --c2: #06b6d4; --c3: #10b981;
-        --c4: #f59e0b; --c5: #8b5cf6; --c6: #ef4444;
-        --c7: #ec4899; --c8: #14b8a6; --c9: #f97316; --c10: #84cc16;
-    }
-    .row-colored { border-left: 3px solid var(--row-color, var(--accent)); }
-    .subject-pill-colored {
-        background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
-        border: 1px solid color-mix(in srgb, var(--pill-color, var(--accent)) 40%, transparent);
-        color: var(--pill-color, var(--accent));
-    }
+
+        .row-colored { border-left: 3px solid var(--row-color, var(--accent)); }
+        .subject-pill-colored {
+            background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--pill-color, var(--accent)) 40%, transparent);
+            color: var(--pill-color, var(--accent));
+        }
+
+        /* Архив — строки чуть приглушённее */
+        .archive-row { opacity: 0.82; }
+        .archive-row:hover { opacity: 1; }
     </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
 <nav class="sidebar">
-    <div class="sidebar-logo">
-        <div class="badge">⚡ ITишник</div>
-    </div>
+    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
     <div class="sidebar-user">
         <div class="name">{{ user.username }}</div>
         <div class="role">{{ user.get_role_display }}</div>
     </div>
-
     {% if user.role == 'admin' %}
         <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
     {% endif %}
-
-    <a href="{% url 'calendar' %}" class="nav-item active">
-        <span class="icon">📅</span> Расписание
-    </a>
+    <a href="{% url 'calendar' %}" class="nav-item active"><span class="icon">📅</span> Расписание</a>
     <a href="{% url 'messages_list' %}" class="nav-item">
         <span class="icon">💬</span> Сообщения
-        {% if unread_count > 0 %}
-            <span class="nav-badge">{{ unread_count }}</span>
-        {% endif %}
+        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
     </a>
     <a href="{% url 'notifications' %}" class="nav-item">
         <span class="icon">🔔</span> Уведомления
-        {% if notif_count > 0 %}
-            <span class="nav-badge">{{ notif_count }}</span>
-        {% endif %}
+        {% if notif_count > 0 %}<span class="nav-badge">{{ notif_count }}</span>{% endif %}
     </a>
     {% if user.role != 'student' %}
-        <a href="{% url 'profile' %}" class="nav-item">
-            <span class="icon">👤</span> Личный кабинет
-        </a>
-        <a href="{% url 'materials' %}" class="nav-item">
-            <span class="icon">📚</span> Материалы
-        </a>
+        <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
+        <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
     {% endif %}
     <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
     {% if user.role == 'admin' %}
-        <a href="{% url 'reports_page' %}" class="nav-item">
-            <span class="icon">📊</span> Отчёты
-        </a>
-        <a href="{% url 'admin_panel' %}" class="nav-item">
-            <span class="icon">⚙️</span> Управление
-        </a>
+        <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
+        <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
     {% endif %}
-
     <div class="sidebar-bottom">
         <form action="{% url 'logout' %}" method="post">
             {% csrf_token %}
@@ -288,56 +285,99 @@
     </div>
 </nav>
 
-<!-- MAIN -->
 <main class="main">
     <div class="page-header">
         <h1>📅 Расписание занятий</h1>
-        <p>{% if user.role == 'student' %}Ваши предстоящие занятия{% elif user.role == 'teacher' %}Ваши занятия и ученики{% else %}Все занятия студии{% endif %}</p>
+        <p>{% if is_archive %}Архив прошедших занятий{% elif user.role == 'student' %}Ваши предстоящие занятия{% elif user.role == 'teacher' %}Ваши занятия и ученики{% else %}Все занятия студии{% endif %}</p>
     </div>
 
-    {% if user.role == 'admin' %}
-    <div class="filter-bar">
-        <label>🔍 Фильтр:</label>
-        <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
-            <select name="teacher_filter">
-                <option value="">— Все учителя —</option>
-                {% for t in teachers %}
-                    <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
-                        {{ t.username }}
-                    </option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-filter">Применить</button>
-            {% if request.GET.teacher_filter %}
-                <a href="{% url 'calendar' %}" class="btn-reset">Сбросить</a>
-            {% endif %}
-        </form>
-        <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
+    <!-- ВКЛАДКИ -->
+    <div class="tabs">
+        <a href="{% url 'calendar' %}" class="tab-btn {% if not is_archive %}active{% endif %}">
+            📅 Расписание
+        </a>
+        <a href="{% url 'archive' %}" class="tab-btn archive-active {% if is_archive %}active{% endif %}">
+            🗂 Архив
+        </a>
     </div>
+
+    {% if is_archive %}
+        <!-- ===== АРХИВ ===== -->
+        <div class="archive-banner">
+            🗂 Показаны занятия старше 3 дней
+        </div>
+
+        <!-- Фильтры архива -->
+        <div class="filter-bar">
+            <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+                {% if user.role == 'admin' %}
+                <label>Учитель:</label>
+                <select name="teacher_filter">
+                    <option value="">— Все —</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                            {{ t.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <label>Месяц:</label>
+                <input type="month" name="month" value="{{ month_filter }}">
+                <button type="submit" class="btn-filter">Применить</button>
+                {% if request.GET.teacher_filter or request.GET.month %}
+                    <a href="{% url 'archive' %}" class="btn-reset">Сбросить</a>
+                {% endif %}
+            </form>
+            {% if user.role == 'admin' %}
+                <a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <!-- ===== РАСПИСАНИЕ ===== -->
+        {% if user.role == 'admin' %}
+        <div class="filter-bar">
+            <label>🔍 Учитель:</label>
+            <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+                <select name="teacher_filter">
+                    <option value="">— Все учителя —</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                            {{ t.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-filter">Применить</button>
+                {% if request.GET.teacher_filter %}
+                    <a href="{% url 'calendar' %}" class="btn-reset">Сбросить</a>
+                {% endif %}
+            </form>
+            <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
+        </div>
+        {% endif %}
+
+        <div class="period-bar">
+            <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                {% if request.GET.teacher_filter %}
+                    <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
+                {% endif %}
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
+                <button type="submit" name="period" value="all" class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">Все</button>
+                <button type="submit" name="period" value="week" class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">Неделя</button>
+                <button type="submit" name="period" value="month" class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">Месяц</button>
+            </form>
+        </div>
+
+        {% if conflict_error %}
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
+                    border-radius:10px;padding:14px 18px;margin-bottom:20px;
+                    color:#fca5a5;font-size:14px;font-weight:600;">
+            {{ conflict_error }}
+        </div>
+        {% endif %}
     {% endif %}
 
-    <!-- Фильтр по периоду — для всех -->
-    <div style="margin-bottom:20px;">
-        <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            {% if request.GET.teacher_filter %}
-                <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
-            {% endif %}
-            <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
-            <button type="submit" name="period" value="all"
-                class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">
-                Все
-            </button>
-            <button type="submit" name="period" value="week"
-                class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">
-                Неделя
-            </button>
-            <button type="submit" name="period" value="month"
-                class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">
-                Месяц
-            </button>
-        </form>
-    </div>
-
+    <!-- ТАБЛИЦА (общая для обоих режимов) -->
     <div class="table-wrap">
         <table>
             <thead>
@@ -350,12 +390,13 @@
                         {% else %}Ученик{% endif %}
                     </th>
                     <th>Статус</th>
-                    <th>Связь</th>
+                    {% if not is_archive %}<th>Связь</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for lesson in lessons %}
-                <tr data-subject-id="{{ lesson.subject.id }}" data-color="{{ lesson.subject.color }}">
+                <tr class="{% if is_archive %}archive-row{% endif %}"
+                    data-color="{{ lesson.subject.color }}">
                     <td>
                         <div class="date-cell">
                             <div class="day">{{ lesson.date_time|date:"l" }}</div>
@@ -379,7 +420,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if user.role == 'teacher' or user.role == 'admin' %}
+                        {% if not is_archive and user.role in 'teacher admin' %}
                             <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
                                 <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
                                     <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
@@ -392,9 +433,7 @@
                                     <button type="submit" class="btn-reschedule">Перенести</button>
                                 </form>
                                 {% if user.role == 'admin' %}
-                                    <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">
-                                        🗑 Удалить
-                                    </button>
+                                    <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
                                 {% endif %}
                             </div>
                         {% else %}
@@ -405,6 +444,7 @@
                             </span>
                         {% endif %}
                     </td>
+                    {% if not is_archive %}
                     <td>
                         {% if user.role == 'student' %}
                             <a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
@@ -412,21 +452,21 @@
                             <a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>
                         {% endif %}
                     </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
-                <tr class="empty-row"><td colspan="{% if user.role == 'student' %}4{% else %}5{% endif %}">📭 Занятий пока нет</td></tr>
+                <tr class="empty-row">
+                    <td colspan="{% if is_archive %}{% if user.role == 'student' %}3{% else %}4{% endif %}{% else %}{% if user.role == 'student' %}4{% else %}5{% endif %}{% endif %}">
+                        {% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    {% if conflict_error %}
-    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
-                border-radius:10px;padding:14px 18px;margin-bottom:20px;
-                color:#fca5a5;font-size:14px;font-weight:600;">
-        {{ conflict_error }}
-    </div>
-    {% endif %}
-    {% if user.role != 'student' %}
+
+    <!-- Форма добавления — только в режиме расписания -->
+    {% if not is_archive and user.role != 'student' %}
     <div class="add-form-card">
         <h3>➕ Добавить новое занятие</h3>
         <form method="post">
@@ -474,8 +514,6 @@
 </main>
 
 <script>
-
-    // Применяем цвета при загрузке страницы
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('tr[data-color]').forEach(row => {
             const color = row.dataset.color;
@@ -488,78 +526,52 @@
             }
         });
     });
+
     const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-    // Удаление урока без перезагрузки
     async function deleteLesson(btn) {
-        const lessonId = btn.dataset.lessonId;
         if (!confirm('Удалить занятие?')) return;
-        
+        const lessonId = btn.dataset.lessonId;
         const row = btn.closest('tr');
         row.style.opacity = '0.5';
-        row.style.transition = 'opacity 0.3s';
-
         try {
             const resp = await fetch(`/lesson/delete/${lessonId}/`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': CSRF,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
             });
             if (resp.ok) {
+                row.style.transition = 'opacity 0.3s';
                 row.style.opacity = '0';
                 setTimeout(() => row.remove(), 300);
             } else {
                 row.style.opacity = '1';
-                alert('Ошибка при удалении');
             }
-        } catch(e) {
-            row.style.opacity = '1';
-            alert('Ошибка соединения');
-        }
+        } catch(e) { row.style.opacity = '1'; }
     }
 
-    // Смена статуса без перезагрузки
     async function updateStatus(select) {
         const lessonId = select.dataset.lessonId;
         const status = select.value;
-        const row = select.closest('tr');
         select.disabled = true;
-
         try {
-            const resp = await fetch(`/lesson/${lessonId}/status/${status}/`, {
+            await fetch(`/lesson/${lessonId}/status/${status}/`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': CSRF,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
             });
-            if (!resp.ok) {
-                alert('Ошибка при смене статуса');
-            }
-        } catch(e) {
-            alert('Ошибка соединения');
-        } finally {
-            select.disabled = false;
-        }
+        } catch(e) { alert('Ошибка соединения'); }
+        finally { select.disabled = false; }
     }
 
-    // Перенос урока без перезагрузки
     async function rescheduleLesson(event, form) {
         event.preventDefault();
         const lessonId = form.dataset.lessonId;
         const input = form.querySelector('input[name="new_date"]');
         const btn = form.querySelector('button');
-        const row = form.closest('tr');
-        
         btn.textContent = '...';
         btn.disabled = true;
-
         const formData = new FormData();
         formData.append('new_date', input.value);
         formData.append('csrfmiddlewaretoken', CSRF);
-
         try {
             const resp = await fetch(`/lesson/reschedule/${lessonId}/`, {
                 method: 'POST',
@@ -567,39 +579,26 @@
                 body: formData
             });
             if (resp.ok) {
-                // Обновляем дату в строке без reload
+                const row = form.closest('tr');
                 const dateCell = row.querySelector('.datetime');
-                const dayCell = row.querySelector('.day');
                 const newDate = new Date(input.value);
-                
                 dateCell.textContent = newDate.toLocaleDateString('ru-RU', {
                     day: '2-digit', month: '2-digit', year: 'numeric'
-                }) + ' · ' + newDate.toLocaleTimeString('ru-RU', {
-                    hour: '2-digit', minute: '2-digit'
-                });
-
-                // Мигаем строкой — визуальный фидбек
+                }) + ' · ' + newDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 row.style.background = 'rgba(16,185,129,0.08)';
                 setTimeout(() => row.style.background = '', 1500);
-                
                 btn.textContent = '✓';
                 setTimeout(() => btn.textContent = 'Перенести', 2000);
-            } else {
-                alert('Ошибка при переносе');
-                btn.textContent = 'Перенести';
             }
-        } catch(e) {
-            alert('Ошибка соединения');
-            btn.textContent = 'Перенести';
-        } finally {
-            btn.disabled = false;
-        }
+        } catch(e) { alert('Ошибка соединения'); }
+        finally { btn.disabled = false; }
     }
+
     window.onload = function() {
         let now = new Date();
         now.setDate(now.getDate() + 1);
         now.setHours(16, 0, 0, 0);
-        let pad = n => String(n).padStart(2,'0');
+        let pad = n => String(n).padStart(2, '0');
         let val = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
         let inp = document.getElementById('lesson_date_time');
         if (inp) inp.value = val;

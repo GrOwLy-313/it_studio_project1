@@ -945,3 +945,47 @@ def chat_send(request, user_id):
                 }
             })
     return JsonResponse({'error': 'bad request'}, status=400)
+
+@login_required
+def archive_view(request):
+    archive_date = timezone.now() - timedelta(days=3)
+
+    if request.user.role == 'student':
+        lessons = Lesson.objects.filter(
+            student=request.user,
+            date_time__lt=archive_date
+        )
+    elif request.user.role == 'teacher':
+        lessons = Lesson.objects.filter(
+            teacher=request.user,
+            date_time__lt=archive_date
+        )
+    else:  # admin
+        lessons = Lesson.objects.all().filter(date_time__lt=archive_date)
+        teacher_filter = request.GET.get('teacher_filter')
+        if teacher_filter:
+            lessons = lessons.filter(teacher_id=teacher_filter)
+
+    # Фильтр по месяцу
+    month_filter = request.GET.get('month')
+    if month_filter:
+        try:
+            year, month = map(int, month_filter.split('-'))
+            lessons = lessons.filter(
+                date_time__year=year,
+                date_time__month=month
+            )
+        except ValueError:
+            pass
+
+    lessons = lessons.select_related(
+        'teacher', 'student', 'subject'
+    ).order_by('-date_time')
+
+    return render(request, 'core/calendar.html', {
+        'lessons': lessons,
+        'teachers': User.objects.filter(role='teacher'),
+        'period_filter': 'all',
+        'is_archive': True,
+        'month_filter': month_filter or '',
+    })
