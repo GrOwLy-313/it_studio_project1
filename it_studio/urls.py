@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
 from core import views
 
 
@@ -23,4 +25,10 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('notifications/', views.notifications_view, name='notifications'),
     path('notifications/read/<int:notif_id>/', views.mark_notification_read, name='notif_read'),
-]
+    path('homework/', views.homework_view, name='homework'),
+    path('homework/create/', views.create_homework, name='create_homework'),
+    path('homework/<int:hw_id>/done/', views.mark_homework_done, name='homework_done'),
+    path('homework/<int:hw_id>/check/', views.check_homework, name='homework_check'),
+    path('homework/<int:hw_id>/delete/', views.delete_homework, name='homework_delete'),
+    path('homework/<int:hw_id>/status/<str:status>/', views.update_homework_status, name='homework_status'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

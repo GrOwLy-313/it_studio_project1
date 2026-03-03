@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Lesson, Message, User, Material, Subject, TeacherRate, TeacherStudent, Notification
+from .models import Lesson, Message, User, Material, Subject, TeacherRate, TeacherStudent, Notification, Homework
 from django.db import models
 from django.db.models import Count, Sum
 from django.utils import timezone
@@ -387,7 +387,12 @@ def admin_panel_view(request):
             Subject.objects.filter(id=subject_id).update(
                 price_per_lesson=Decimal(new_price)
             )
-
+    if 'update_color' in request.POST:
+        subject_id = request.POST.get('subject_id')
+        new_color = request.POST.get('new_color')
+        if subject_id and new_color:
+            Subject.objects.filter(id=subject_id).update(color=new_color)
+        return redirect('admin_panel')
     # 6. Назначение ставки учителю
     if 'set_rate' in request.POST:
         TeacherRate.objects.update_or_create(
@@ -407,17 +412,22 @@ def admin_panel_view(request):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def materials_view(request):
-    if request.user.role not in ['teacher', 'admin']:
-        return redirect('calendar')
-    
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
+        file = request.FILES.get('file')  # НОВОЕ
         if title and content:
-            Material.objects.create(title=title, content=content, author=request.user)
+            Material.objects.create(
+                title=title,
+                content=content,
+                author=request.user,
+                file=file  # НОВОЕ (None если не загружен)
+            )
             return redirect('materials')
 
-    return render(request, 'core/materials.html', {'materials': Material.objects.all().order_by('-created_at')})
+    return render(request, 'core/materials.html', {
+        'materials': Material.objects.all().order_by('-created_at')
+    })
 
 @login_required
 def messages_list_view(request):
@@ -727,3 +737,129 @@ def notifications_view(request):
 def mark_notification_read(request, notif_id):
     Notification.objects.filter(id=notif_id, user=request.user).update(is_read=True)
     return redirect('notifications')
+
+@login_required
+def homework_view(request):
+    if request.user.role == 'teacher':
+        # Учитель видит все задания которые выдал
+        homeworks = Homework.objects.filter(
+            teacher=request.user
+        ).select_related('student', 'subject', 'lesson').order_by('-created_at')
+        students = TeacherStudent.objects.filter(
+            teacher=request.user
+        ).values_list('student', flat=True)
+        students_list = User.objects.filter(id__in=students)
+        subjects = TeacherRate.objects.filter(
+            teacher=request.user
+        ).values_list('subject', flat=True)
+        subjects_list = Subject.objects.filter(id__in=subjects)
+
+    elif request.user.role == 'admin':
+        homeworks = Homework.objects.all().select_related(
+            'student', 'teacher', 'subject'
+        ).order_by('-created_at')
+        students_list = User.objects.filter(role='student')
+        subjects_list = Subject.objects.all()
+
+    else:  # student
+        homeworks = Homework.objects.filter(
+            student=request.user
+        ).select_related('teacher', 'subject').order_by('-created_at')
+        students_list = []
+        subjects_list = []
+    total = homeworks.count()
+    done_count = homeworks.filter(status__in=['done', 'checked']).count()
+    pending_count = homeworks.filter(status='assigned').count()
+    return render(request, 'core/homework.html', {
+        'homeworks': homeworks,
+        'students_list': students_list,
+        'subjects_list': subjects_list,
+        'total': total,
+        'done_count': done_count,
+        'pending_count': pending_count,
+    })
+
+
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def create_homework(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student')
+        subject_id = request.POST.get('subject')
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        due_date = request.POST.get('due_date') or None
+
+        if student_id and subject_id and title and description:
+            hw = Homework.objects.create(
+                teacher=request.user,
+                student_id=student_id,
+                subject_id=subject_id,
+                title=title,
+                description=description,
+                due_date=due_date,
+            )
+            # Уведомление ученику
+            Notification.objects.create(
+                user=hw.student,
+                text=f'Новое домашнее задание: "{title}" по предмету {hw.subject.name}. '
+                     f'Учитель: {request.user.username}'
+                     + (f'. Срок: {due_date[:10].replace("-", ".")}' if due_date else '')
+            )
+    return redirect('homework')
+
+
+@login_required
+def mark_homework_done(request, hw_id):
+    hw = get_object_or_404(Homework, id=hw_id, student=request.user)
+    hw.status = 'done'
+    hw.save()
+    # Уведомление учителю
+    Notification.objects.create(
+        user=hw.teacher,
+        text=f'Ученик {request.user.username} выполнил задание "{hw.title}"'
+    )
+    return redirect('homework')
+
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def check_homework(request, hw_id):
+    hw = get_object_or_404(Homework, id=hw_id)
+    if request.method == 'POST':
+        comment = request.POST.get('comment', '')
+        hw.status = 'checked'
+        hw.teacher_comment = comment
+        hw.save()
+        # Уведомление ученику
+        Notification.objects.create(
+            user=hw.student,
+            text=f'Учитель проверил задание "{hw.title}"'
+                 + (f': {comment}' if comment else '')
+        )
+    return redirect('homework')
+
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def delete_homework(request, hw_id):
+    hw = get_object_or_404(Homework, id=hw_id)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        hw.delete()
+        return JsonResponse({'status': 'ok'})
+    hw.delete()
+    return redirect('homework')
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def update_homework_status(request, hw_id, status):
+    from django.http import JsonResponse
+    hw = get_object_or_404(Homework, id=hw_id)
+    if status in ['assigned', 'done', 'checked']:
+        hw.status = status
+        hw.save()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'ok'})
+    return redirect('homework')

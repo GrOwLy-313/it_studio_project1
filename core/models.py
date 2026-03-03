@@ -25,18 +25,20 @@ class Message(models.Model):
         return f"{self.sender} -> {self.receiver}: {self.text[:20]}"
     
 class Material(models.Model):
-    title = models.CharField(max_length=200, verbose_name="Название материала")
-    content = models.TextField(verbose_name="Описание или ссылка")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Кто добавил")
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    file = models.FileField(upload_to='materials/', null=True, blank=True)  # НОВОЕ
 
     def __str__(self):
         return self.title
     
 class Subject(models.Model):
     name = models.CharField(max_length=100)
-    price_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00)
-    is_universal = models.BooleanField(default=False, verbose_name="Доступно всем учителям")
+    price_per_lesson = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_universal = models.BooleanField(default=False)
+    color = models.CharField(max_length=7, default='#3b82f6')  # НОВОЕ
 
     def __str__(self):
         return self.name
@@ -85,3 +87,23 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"→ {self.user.username}: {self.text[:40]}"
+    
+class Homework(models.Model):
+    STATUS_CHOICES = [
+        ('assigned', 'Назначено'),
+        ('done', 'Выполнено'),
+        ('checked', 'Проверено'),
+    ]
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='homeworks', null=True, blank=True)
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_homeworks')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_homeworks')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    due_date = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='assigned')
+    created_at = models.DateTimeField(auto_now_add=True)
+    teacher_comment = models.TextField(blank=True)
+
+    def __str__(self):
+        return f'{self.title} → {self.student.username}'

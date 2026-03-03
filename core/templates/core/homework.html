@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Домашние задания — ITишник</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--accent:#3b82f6;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;}
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+        .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:24px 0;}
+        .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+        .sidebar-logo .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:8px 16px;border-radius:50px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:white;}
+        .sidebar-user{padding:12px 20px;margin-bottom:8px;}
+        .sidebar-user .name{font-weight:700;font-size:14px;}
+        .sidebar-user .role{font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all 0.15s;border-left:3px solid transparent;margin:2px 0;}
+        .nav-item:hover{color:var(--text);background:var(--surface2);}
+        .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(59,130,246,0.08);}
+        .nav-item .icon{font-size:18px;width:22px;text-align:center;}
+        .nav-badge{margin-left:auto;background:var(--red);color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
+        .sidebar-bottom{margin-top:auto;padding:0 20px;border-top:1px solid var(--border);padding-top:16px;}
+        .btn-logout{width:100%;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+        .btn-logout:hover{background:rgba(239,68,68,0.2);}
+        .main{margin-left:240px;padding:32px;}
+        .page-header{margin-bottom:28px;}
+        .page-header h1{font-size:26px;font-weight:800;}
+        .page-header p{color:var(--muted);font-size:14px;margin-top:4px;}
+
+        /* STATS */
+        .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;}
+        .stat-card .num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;margin-bottom:4px;}
+        .stat-card .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+        .num-yellow{color:var(--yellow);}
+        .num-green{color:var(--green);}
+        .num-blue{color:var(--accent);}
+
+        /* HW CARDS */
+        .hw-grid{display:grid;gap:16px;margin-bottom:28px;}
+        .hw-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;transition:border-color 0.2s;}
+        .hw-card:hover{border-color:rgba(59,130,246,0.3);}
+        .hw-card.status-done{border-left:3px solid var(--green);}
+        .hw-card.status-checked{border-left:3px solid var(--accent);}
+        .hw-card.status-assigned{border-left:3px solid var(--yellow);}
+        .hw-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+        .hw-title{font-size:16px;font-weight:700;}
+        .hw-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+        .hw-pill{padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;}
+        .pill-subject{background:rgba(59,130,246,0.12);color:var(--accent);border:1px solid rgba(59,130,246,0.25);}
+        .pill-student{background:rgba(6,182,212,0.12);color:var(--accent2);border:1px solid rgba(6,182,212,0.25);}
+        .pill-due{background:rgba(245,158,11,0.12);color:var(--yellow);border:1px solid rgba(245,158,11,0.25);}
+        .hw-desc{font-size:14px;color:var(--muted2);line-height:1.6;margin-bottom:12px;}
+        .hw-comment{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green);margin-bottom:12px;}
+        .hw-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .btn-done{padding:7px 14px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:var(--green);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;text-decoration:none;}
+        .btn-done:hover{background:rgba(16,185,129,0.2);}
+        .btn-check{padding:7px 14px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:8px;color:var(--accent);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+        .btn-check:hover{background:rgba(59,130,246,0.2);}
+        .btn-del{padding:7px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+        .btn-del:hover{background:rgba(239,68,68,0.15);}
+        .status-badge{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;}
+        .badge-assigned{background:rgba(245,158,11,0.12);color:var(--yellow);border:1px solid rgba(245,158,11,0.25);}
+        .badge-done{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.25);}
+        .badge-checked{background:rgba(59,130,246,0.12);color:var(--accent);border:1px solid rgba(59,130,246,0.25);}
+
+        /* CHECK MODAL */
+        .check-form{display:none;margin-top:12px;gap:8px;}
+        .check-form.open{display:flex;flex-direction:column;}
+        .check-form textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-family:'Manrope',sans-serif;font-size:13px;resize:vertical;min-height:60px;outline:none;}
+        .check-form textarea:focus{border-color:var(--accent);}
+
+        /* ADD FORM */
+        .add-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:28px;}
+        .add-card h3{font-size:16px;font-weight:700;margin-bottom:20px;}
+        .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;align-items:end;}
+        .form-group{display:flex;flex-direction:column;gap:6px;}
+        .form-group label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+        .form-group select,.form-group input,.form-group textarea{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;}
+        .form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:var(--accent);}
+        .form-group textarea{resize:vertical;min-height:80px;grid-column:span 2;}
+        .btn-create{padding:11px 20px;background:linear-gradient(135deg,var(--green),#059669);border:none;border-radius:10px;color:white;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+        .btn-create:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,0.35);}
+        .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+        .empty-state .big{font-size:48px;margin-bottom:12px;}
+
+        .status-select-hw {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text); padding: 7px 10px;
+            font-family: 'Manrope', sans-serif; font-size: 13px;
+            font-weight: 600; cursor: pointer; outline: none;
+        }
+        .status-select-hw:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+<nav class="sidebar">
+    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
+    <div class="sidebar-user">
+        <div class="name">{{ user.username }}</div>
+        <div class="role">{{ user.get_role_display }}</div>
+    </div>
+    {% if user.role == 'admin' %}<a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>{% endif %}
+    <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
+    <a href="{% url 'messages_list' %}" class="nav-item">
+        <span class="icon">💬</span> Сообщения
+        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'notifications' %}" class="nav-item">
+        <span class="icon">🔔</span> Уведомления
+        {% if notif_count > 0 %}<span class="nav-badge">{{ notif_count }}</span>{% endif %}
+    </a>
+    {% if user.role != 'student' %}
+        <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
+        <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
+    {% endif %}
+    <a href="{% url 'homework' %}" class="nav-item active"><span class="icon">📝</span> Домашние задания</a>
+    {% if user.role == 'admin' %}
+        <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
+        <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
+    {% endif %}
+    <div class="sidebar-bottom">
+        <form action="{% url 'logout' %}" method="post">{% csrf_token %}
+            <button type="submit" class="btn-logout">→ Выйти из системы</button>
+        </form>
+    </div>
+</nav>
+
+<main class="main">
+    <div class="page-header">
+        <h1>📝 Домашние задания</h1>
+        <p>{% if user.role == 'student' %}Задания от ваших учителей{% else %}Управление домашними заданиями{% endif %}</p>
+    </div>
+
+    <!-- Статистика -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="num num-yellow">{{ total }}</div>
+            <div class="label">Всего заданий</div>
+        </div>
+        <div class="stat-card">
+            <div class="num num-green">{{ done_count }}</div>
+            <div class="label">Выполнено</div>
+        </div>
+        <div class="stat-card">
+            <div class="num num-blue">{{ pending_count }}</div>
+            <div class="label">Ожидают выполнения</div>
+        </div>
+    </div>
+
+    <!-- Форма добавления (учитель/админ) -->
+    {% if user.role != 'student' %}
+    <div class="add-card">
+        <h3>➕ Выдать домашнее задание</h3>
+        <form method="post" action="{% url 'create_homework' %}">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Ученик</label>
+                    <select name="student" required>
+                        <option value="">— Выберите —</option>
+                        {% for s in students_list %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Предмет</label>
+                    <select name="subject" required>
+                        <option value="">— Выберите —</option>
+                        {% for s in subjects_list %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Название задания</label>
+                    <input type="text" name="title" placeholder="Например: Задачи по алгоритмам" required>
+                </div>
+                <div class="form-group">
+                    <label>Срок сдачи (необязательно)</label>
+                    <input type="datetime-local" name="due_date">
+                </div>
+                <div class="form-group" style="grid-column:span 2;">
+                    <label>Описание задания</label>
+                    <textarea name="description" placeholder="Опишите что нужно сделать..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-create">✓ Выдать задание</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Список заданий -->
+    {% if homeworks %}
+    <div class="hw-grid">
+        {% for hw in homeworks %}
+        <div class="hw-card status-{{ hw.status }}" id="hw-{{ hw.id }}">
+            <div class="hw-header">
+                <div class="hw-title">{{ hw.title }}</div>
+                <span class="status-badge badge-{{ hw.status }}">
+                    {% if hw.status == 'assigned' %}⏳ Назначено
+                    {% elif hw.status == 'done' %}✅ Выполнено
+                    {% else %}✔ Проверено{% endif %}
+                </span>
+            </div>
+            <div class="hw-meta">
+                <span class="hw-pill pill-subject">{{ hw.subject.name }}</span>
+                {% if user.role != 'student' %}
+                    <span class="hw-pill pill-student">🎓 {{ hw.student.username }}</span>
+                {% else %}
+                    <span class="hw-pill pill-student">👨‍🏫 {{ hw.teacher.username }}</span>
+                {% endif %}
+                {% if hw.due_date %}
+                    <span class="hw-pill pill-due">📅 до {{ hw.due_date|date:"d.m.Y" }}</span>
+                {% endif %}
+            </div>
+            <div class="hw-desc">{{ hw.description }}</div>
+
+            {% if hw.teacher_comment %}
+            <div class="hw-comment">💬 Комментарий учителя: {{ hw.teacher_comment }}</div>
+            {% endif %}
+
+            <div class="hw-actions">
+                {% if user.role != 'student' %}
+                    <select class="status-select-hw" data-hw-id="{{ hw.id }}" onchange="updateHwStatus(this)">
+                        <option value="assigned" {% if hw.status == 'assigned' %}selected{% endif %}>⏳ Назначено</option>
+                        <option value="done" {% if hw.status == 'done' %}selected{% endif %}>✅ Выполнено</option>
+                        <option value="checked" {% if hw.status == 'checked' %}selected{% endif %}>✔ Проверено</option>
+                    </select>
+                    {% if hw.status == 'done' %}
+                        <button class="btn-check" data-hw-id="{{ hw.id }}" onclick="toggleCheck(this)">💬 Добавить комментарий</button>
+                        <form class="check-form" id="check-{{ hw.id }}" method="post" action="{% url 'homework_check' hw.id %}">
+                            {% csrf_token %}
+                            <textarea name="comment" placeholder="Комментарий к заданию..."></textarea>
+                            <div style="display:flex;gap:8px;">
+                                <button type="submit" class="btn-done">Сохранить</button>
+                                <button type="button" class="btn-del" data-hw-id="{{ hw.id }}" onclick="toggleCheck(this)">Отмена</button>
+                            </div>
+                        </form>
+                    {% endif %}
+                    <button class="btn-del" data-hw-id="{{ hw.id }}" onclick="deleteHw(this)">🗑 Удалить</button>
+                {% else %}
+                    <span style="color:var(--muted);font-size:13px;">Статус обновляет учитель</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="big">📝</div>
+        <p>{% if user.role == 'student' %}Заданий пока нет — отдыхай!{% else %}Вы ещё не выдавали заданий{% endif %}</p>
+    </div>
+    {% endif %}
+</main>
+
+<script>
+    function toggleCheck(btn) {
+        const hwId = btn.dataset.hwId;
+        const form = document.getElementById('check-' + hwId);
+        form.classList.toggle('open');
+    }
+
+    const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+    async function deleteHw(btn) {
+        if (!confirm('Удалить задание?')) return;
+        const hwId = btn.dataset.hwId;
+        const card = document.getElementById('hw-' + hwId);
+        card.style.opacity = '0.5';
+        try {
+            const resp = await fetch('/homework/' + hwId + '/delete/', {
+                method: 'POST',
+                headers: {'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (resp.ok) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+            } else {
+                card.style.opacity = '1';
+            }
+        } catch(e) {
+            card.style.opacity = '1';
+        }
+    }
+    async function updateHwStatus(select) {
+        const hwId = select.dataset.hwId;
+        const status = select.value;
+        select.disabled = true;
+        try {
+            const resp = await fetch(`/homework/${hwId}/status/${status}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (resp.ok) {
+                const card = document.getElementById('hw-' + hwId);
+
+                // Обновляем класс карточки
+                card.className = card.className.replace(/status-\w+/, 'status-' + status);
+
+                // Обновляем бейдж
+                const badge = card.querySelector('.status-badge');
+                const labels = { assigned: '⏳ Назначено', done: '✅ Выполнено', checked: '✔ Проверено' };
+                const classes = { assigned: 'badge-assigned', done: 'badge-done', checked: 'badge-checked' };
+                badge.textContent = labels[status];
+                badge.className = 'status-badge ' + classes[status];
+
+                // Показываем/скрываем кнопку комментария
+                const existingCommentBtn = card.querySelector('.btn-check');
+                const existingCheckForm = card.querySelector('.check-form');
+                if (existingCommentBtn) existingCommentBtn.remove();
+                if (existingCheckForm) existingCheckForm.remove();
+
+                if (status === 'done') {
+                    const actions = card.querySelector('.hw-actions');
+                    const delBtn = actions.querySelector('.btn-del');
+                    const commentBtn = document.createElement('button');
+                    commentBtn.className = 'btn-check';
+                    commentBtn.dataset.hwId = hwId;
+                    commentBtn.setAttribute('onclick', 'toggleCheck(this)');
+                    commentBtn.textContent = '💬 Добавить комментарий';
+                    actions.insertBefore(commentBtn, delBtn);
+
+                    // Форма комментария
+                    const form = document.createElement('form');
+                    form.className = 'check-form';
+                    form.id = 'check-' + hwId;
+                    form.method = 'post';
+                    form.action = `/homework/${hwId}/check/`;
+                    form.innerHTML = `
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+                        <textarea name="comment" placeholder="Комментарий к заданию..."></textarea>
+                        <div style="display:flex;gap:8px;">
+                            <button type="submit" class="btn-done">Сохранить</button>
+                            <button type="button" class="btn-del" data-hw-id="${hwId}" onclick="toggleCheck(this)">Отмена</button>
+                        </div>
+                    `;
+                    actions.insertBefore(form, delBtn);
+                }
+
+                // Обновляем статистику
+                updateStats();
+            }
+        } catch(e) {
+            alert('Ошибка соединения');
+        } finally {
+            select.disabled = false;
+        }
+    }
+
+    function updateStats() {
+        const cards = document.querySelectorAll('.hw-card');
+        let total = cards.length;
+        let done = 0;
+        let pending = 0;
+        cards.forEach(card => {
+            if (card.classList.contains('status-done') || card.classList.contains('status-checked')) done++;
+            if (card.classList.contains('status-assigned')) pending++;
+        });
+        const nums = document.querySelectorAll('.stat-card .num');
+        if (nums[0]) nums[0].textContent = total;
+        if (nums[1]) nums[1].textContent = done;
+        if (nums[2]) nums[2].textContent = pending;
+    }
+</script>
+</body>
+</html>

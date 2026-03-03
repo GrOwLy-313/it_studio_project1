@@ -105,6 +105,7 @@
     </a>
     <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
     <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
+    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
     <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
     <a href="{% url 'admin_panel' %}" class="nav-item active"><span class="icon">⚙️</span> Управление</a>
     <div class="sidebar-bottom">
@@ -196,6 +197,13 @@
                         </div>
                     </div>
                     <div class="price-actions">
+                        <form method="post" style="display:flex;gap:6px;align-items:center;">
+                            {% csrf_token %}
+                            <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                            <input type="color" name="new_color" value="{{ sub.color }}"
+                                style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
+                            <button type="submit" name="update_color" class="btn-price">Цвет</button>
+                        </form>
                         <form method="post" style="display:flex;gap:6px;align-items:center;">
                             {% csrf_token %}
                             <input type="hidden" name="subject_id" value="{{ sub.id }}">

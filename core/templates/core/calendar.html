@@ -218,6 +218,17 @@
         color: white !important;
         border-color: var(--accent) !important;
     }
+    .subject-colors {
+        --c1: #3b82f6; --c2: #06b6d4; --c3: #10b981;
+        --c4: #f59e0b; --c5: #8b5cf6; --c6: #ef4444;
+        --c7: #ec4899; --c8: #14b8a6; --c9: #f97316; --c10: #84cc16;
+    }
+    .row-colored { border-left: 3px solid var(--row-color, var(--accent)); }
+    .subject-pill-colored {
+        background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
+        border: 1px solid color-mix(in srgb, var(--pill-color, var(--accent)) 40%, transparent);
+        color: var(--pill-color, var(--accent));
+    }
     </style>
 </head>
 <body>
@@ -259,6 +270,7 @@
             <span class="icon">📚</span> Материалы
         </a>
     {% endif %}
+    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
     {% if user.role == 'admin' %}
         <a href="{% url 'reports_page' %}" class="nav-item">
             <span class="icon">📊</span> Отчёты
@@ -343,7 +355,7 @@
             </thead>
             <tbody>
                 {% for lesson in lessons %}
-                <tr>
+                <tr data-subject-id="{{ lesson.subject.id }}" data-color="{{ lesson.subject.color }}">
                     <td>
                         <div class="date-cell">
                             <div class="day">{{ lesson.date_time|date:"l" }}</div>
@@ -462,6 +474,20 @@
 </main>
 
 <script>
+
+    // Применяем цвета при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('tr[data-color]').forEach(row => {
+            const color = row.dataset.color;
+            row.style.setProperty('--row-color', color);
+            row.classList.add('row-colored');
+            const pill = row.querySelector('.subject-pill');
+            if (pill) {
+                pill.style.setProperty('--pill-color', color);
+                pill.classList.add('subject-pill-colored');
+            }
+        });
+    });
     const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
     // Удаление урока без перезагрузки
