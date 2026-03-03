@@ -3,6 +3,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from core import views
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.calendar_view, name='calendar'),
@@ -16,4 +17,7 @@ urlpatterns = [
     path('messages/', views.messages_list_view, name='messages_list'),
     path('admin-panel/', views.admin_panel_view, name='admin_panel'),
     path('lesson/reschedule/<int:lesson_id>/', views.reschedule_lesson, name='reschedule_lesson'),
+    path('export/lessons/', views.export_lessons_csv, name='export_lessons_csv'),
+    path('reports/', views.reports_page, name='reports_page'),
+    path('reports/export/', views.export_detailed_report, name='export_detailed_report'),
 ]
