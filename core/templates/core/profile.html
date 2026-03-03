@@ -36,6 +36,18 @@
         {% if user.role == 'teacher' %}
         <div class="card">
             <h2>💰 Моя статистика и доход</h2>
+            <form method="get" style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <label style="font-weight: bold;">📅 Фильтр по месяцу:</label>
+                <input type="month" name="month" value="{{ selected_month }}"
+                    style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <button type="submit" 
+                        style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    Показать
+                </button>
+                {% if selected_month %}
+                    <a href="{% url 'profile' %}" style="color: #666; font-size: 0.9em;">Сбросить</a>
+                {% endif %}
+            </form>
             <div style="display: flex; gap: 40px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
                 <div>Выполнено уроков: <strong>{{ my_count }}</strong></div>
                 <div>Итого к выплате: <span class="salary">{{ my_salary }} руб.</span></div>

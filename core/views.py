@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Lesson, Message, User, Material, Subject, TeacherRate
+from .models import Lesson, Message, User, Material, Subject, TeacherRate, TeacherStudent
 from django.db import models
 from django.db.models import Count, Sum
 from django.utils import timezone
@@ -84,12 +84,16 @@ def calendar_view(request):
     else:
         # Учитель видит только те направления, по которым у него есть ставка
         assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
-        available_subjects = Subject.objects.filter(id__in=assigned_ids)
+        available_subjects = Subject.objects.filter(
+            models.Q(id__in=assigned_ids) | models.Q(is_universal=True)
+        )
 
     return render(request, 'core/calendar.html', {
         'lessons': lessons,
         'subjects': available_subjects,
-        'students': User.objects.filter(role='student'),
+        'students': User.objects.filter(
+            id__in=TeacherStudent.objects.filter(teacher=request.user).values_list('student_id', flat=True)
+        ) if request.user.role == 'teacher' else User.objects.filter(role='student'),
         'teachers': User.objects.filter(role='teacher'),
     })
 
@@ -174,30 +178,36 @@ def profile_view(request):
 
     if request.user.role == 'teacher':
         # Получаем все проведенные уроки конкретного учителя
-        done_lessons = Lesson.objects.filter(teacher=request.user, status='done').select_related('subject', 'student')
+        # Фильтр по месяцу
+        selected_month = request.GET.get('month')  # формат: "2025-03"
+        if selected_month:
+            try:
+                year, month = map(int, selected_month.split('-'))
+                done_lessons = Lesson.objects.filter(
+                    teacher=request.user, status='done',
+                    date_time__year=year, date_time__month=month
+                ).select_related('subject', 'student')
+            except:
+                done_lessons = Lesson.objects.filter(teacher=request.user, status='done').select_related('subject', 'student')
+        else:
+            done_lessons = Lesson.objects.filter(teacher=request.user, status='done').select_related('subject', 'student')
+
         my_total_lessons = done_lessons.count()
 
-        # Группируем уроки по парам (Ученик + Предмет), чтобы посчитать количество
         summary_data = done_lessons.values(
-            'student__username', 
-            'subject__id', 
+            'student__username',
+            'subject__id',
             'subject__name'
         ).annotate(lesson_count=Count('id'))
 
         for item in summary_data:
-            # Ищем ставку СТРОГО в таблице назначений TeacherRate
             rate_obj = TeacherRate.objects.filter(
-                teacher=request.user, 
+                teacher=request.user,
                 subject_id=item['subject__id']
             ).first()
-            
-            # Если ставка назначена — берем её, если нет — 0.00 (никаких дефолтных 500)
             current_rate = rate_obj.rate if rate_obj else Decimal('0.00')
-            
-            # Считаем промежуточный итог за это направление
             subtotal = current_rate * item['lesson_count']
             my_salary += subtotal
-
             teacher_stats.append({
                 'student__username': item['student__username'],
                 'subject__name': item['subject__name'],
@@ -253,6 +263,7 @@ def profile_view(request):
         'total_lessons_global': Lesson.objects.filter(status='done').count(),
         'total_revenue': total_revenue,
         'students': students_list,
+        'selected_month': selected_month if request.user.role == 'teacher' else None,  # НОВОЕ
     })
 
 @login_required
@@ -261,6 +272,15 @@ def admin_panel_view(request):
     if request.user.role != 'admin':
         return redirect('calendar')
 
+    if 'assign_student' in request.POST:
+        student_id = request.POST.get('student_id')
+        teacher_ids = request.POST.getlist('teacher_ids')  # getlist — т.к. несколько чекбоксов
+        # Сначала удаляем старые связи этого ученика
+        TeacherStudent.objects.filter(student_id=student_id).delete()
+        # Создаём новые
+        for tid in teacher_ids:
+            TeacherStudent.objects.create(teacher_id=tid, student_id=student_id)
+        return redirect('admin_panel')
     # 1. Создание ученика
     if 'create_student' in request.POST:
         User.objects.create_user(
@@ -269,19 +289,47 @@ def admin_panel_view(request):
             role='student'
         )
     
-    # 2. Удаление пользователя
+    # 2. Создание учителя
+    if 'create_teacher' in request.POST:
+        username = request.POST.get('teacher_username')
+        password = request.POST.get('teacher_password')
+        full_name = request.POST.get('teacher_fullname', '')
+        if username and password:
+            teacher = User.objects.create_user(
+                username=username,
+                password=password,
+                role='teacher'
+            )
+            # Сохраняем полное имя если указано
+            if full_name:
+                teacher.first_name = full_name
+                teacher.save()
+
+    # 3. Удаление пользователя
     if 'delete_user' in request.POST:
         User.objects.filter(id=request.POST.get('user_id')).delete()
 
-    # 3. Создание направления
+    # 4. Создание направления
     if 'create_subject' in request.POST:
-        Subject.objects.create(name=request.POST.get('name'))
+        Subject.objects.create(
+            name=request.POST.get('name'),
+            is_universal=request.POST.get('is_universal') == 'on'
+        )
 
-    # 4. Удаление направления
+    # 5. Удаление направления
     if 'delete_subject' in request.POST:
         Subject.objects.filter(id=request.POST.get('subject_id')).delete()
 
-    # 5. Назначение ставки учителю
+    # 6. Изменение цены направления
+    if 'update_price' in request.POST:
+        subject_id = request.POST.get('subject_id')
+        new_price = request.POST.get('new_price')
+        if subject_id and new_price:
+            Subject.objects.filter(id=subject_id).update(
+                price_per_lesson=Decimal(new_price)
+            )
+
+    # 6. Назначение ставки учителю
     if 'set_rate' in request.POST:
         TeacherRate.objects.update_or_create(
             teacher_id=request.POST.get('teacher_id'),
@@ -293,7 +341,8 @@ def admin_panel_view(request):
         'subjects': Subject.objects.all(),
         'students': User.objects.filter(role='student'),
         'teachers': User.objects.filter(role='teacher'),
-        'rates': TeacherRate.objects.all()
+        'rates': TeacherRate.objects.all(),
+        'teacher_students': TeacherStudent.objects.select_related('teacher', 'student').all(),  # НОВОЕ
     })
 
 @login_required

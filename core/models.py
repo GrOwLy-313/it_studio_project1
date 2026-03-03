@@ -34,8 +34,9 @@ class Material(models.Model):
         return self.title
     
 class Subject(models.Model):
-    name = models.CharField(max_length=100, verbose_name="Название курса (Python, Робототехника)")
-    price_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00, verbose_name="Оплата учителю за урок")
+    name = models.CharField(max_length=100)
+    price_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00)
+    is_universal = models.BooleanField(default=False, verbose_name="Доступно всем учителям")
 
     def __str__(self):
         return self.name
@@ -65,3 +66,13 @@ class TeacherRate(models.Model):
 
     def __str__(self):
         return f"{self.teacher.username} - {self.subject.name} ({self.rate}₽)"
+    
+class TeacherStudent(models.Model):
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='my_students')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='my_teachers')
+
+    class Meta:
+        unique_together = ('teacher', 'student')  # нет дублей
+
+    def __str__(self):
+        return f"{self.teacher.username} → {self.student.username}"

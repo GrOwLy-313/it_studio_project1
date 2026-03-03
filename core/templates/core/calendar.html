@@ -56,6 +56,10 @@
         {% if user.role != 'student' %}
             <a href="{% url 'profile' %}" style="color: white; margin-left: 15px;">👤 Личный кабинет</a>
             <a href="{% url 'materials' %}" style="color: white; margin-left: 15px;">📚 Материалы</a>
+            {% if user.role == 'admin' %}
+                <a href="{% url 'reports_page' %}" style="color: white; margin-left: 15px;">📊 Отчёты</a>
+                <a href="{% url 'admin_panel' %}" style="color: white; margin-left: 15px;">⚙️ Управление</a>
+            {% endif %}
         {% endif %}
     </div>
     <form action="{% url 'logout' %}" method="post" style="display:inline;">

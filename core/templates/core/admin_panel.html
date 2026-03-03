@@ -23,24 +23,98 @@
         
         <div class="container">
             <div class="card">
-                <h2>Ученики</h2>
+                <h2>👨‍🏫 Учителя</h2>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="text" name="teacher_username" placeholder="Логин учителя" required>
+                        <input type="text" name="teacher_fullname" placeholder="ФИО учителя (необязательно)">
+                        <input type="password" name="teacher_password" placeholder="Пароль" required>
+                        <button type="submit" name="create_teacher">Зарегистрировать учителя</button>
+                    </form>
+                    <div style="margin-top: 20px;">
+                        {% for t in teachers %}
+                        <div class="list-item">
+                            <div>
+                                <strong>{{ t.username }}</strong>
+                                {% if t.first_name %}
+                                    <span style="color: #666; font-size: 0.9em;"> — {{ t.first_name }}</span>
+                                {% endif %}
+                            </div>
+                            <form method="post" onsubmit="return confirm('Удалить учителя {{ t.username }}?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ t.id }}">
+                                <button type="submit" name="delete_user" class="btn-red">Удалить</button>
+                            </form>
+                        </div>
+                        {% empty %}
+                            <p style="color: #999;">Учителей пока нет</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Ученики</h2>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="text" name="username" placeholder="ФИО ученика" required>
+                        <input type="password" name="password" placeholder="Пароль" required>
+                        <button type="submit" name="create_student">Зарегистрировать</button>
+                    </form>
+                    <div style="margin-top: 20px;">
+                        {% for s in students %}
+                        <div class="list-item">
+                            {{ s.username }}
+                            <form method="post" onsubmit="return confirm('Удалить ученика?')">
+                                {% csrf_token %}<input type="hidden" name="user_id" value="{{ s.id }}">
+                                <button type="submit" name="delete_user" class="btn-red">Удалить</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <h2>🔗 Назначить ученика учителям</h2>
                 <form method="post">
                     {% csrf_token %}
-                    <input type="text" name="username" placeholder="ФИО ученика" required>
-                    <input type="password" name="password" placeholder="Пароль" required>
-                    <button type="submit" name="create_student">Зарегистрировать</button>
-                </form>
-                <div style="margin-top: 20px;">
-                    {% for s in students %}
-                    <div class="list-item">
-                        {{ s.username }}
-                        <form method="post" onsubmit="return confirm('Удалить ученика?')">
-                            {% csrf_token %}<input type="hidden" name="user_id" value="{{ s.id }}">
-                            <button type="submit" name="delete_user" class="btn-red">Удалить</button>
-                        </form>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
+                        <div>
+                            <label><strong>Ученик:</strong></label><br>
+                            <select name="student_id" required style="padding: 8px; min-width: 180px;">
+                                <option value="">-- Выберите ученика --</option>
+                                {% for s in students %}
+                                    <option value="{{ s.id }}">{{ s.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label><strong>Учителя (можно несколько):</strong></label><br>
+                            {% for t in teachers %}
+                                <label style="display: block; margin: 5px 0;">
+                                    <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
+                                    {{ t.username }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <div style="align-self: flex-end;">
+                            <button type="submit" name="assign_student">Сохранить</button>
+                        </div>
                     </div>
+                </form>
+
+                <h3 style="margin-top: 20px;">Текущие назначения:</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 8px; text-align: left;">Ученик</th>
+                        <th style="padding: 8px; text-align: left;">Учитель</th>
+                    </tr>
+                    {% for ts in teacher_students %}
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ ts.student.username }}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ ts.teacher.username }}</td>
+                    </tr>
                     {% endfor %}
-                </div>
+                </table>
             </div>
 
             <div class="card">
@@ -48,18 +122,45 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="text" name="name" placeholder="Название курса" required>
+                    <label style="display: flex; align-items: center; gap: 5px; margin: 5px 0;">
+                        <input type="checkbox" name="is_universal" style="width: auto;">
+                        Доступно всем учителям (например, Пробное занятие)
+                    </label>
                     <button type="submit" name="create_subject">Добавить направление</button>
                 </form>
                 <div style="margin-top: 20px;">
                     {% for sub in subjects %}
-                    <div class="list-item">
-                        {{ sub.name }}
-                        <form method="post" onsubmit="return confirm('Удалить направление?')">
-                            {% csrf_token %}<input type="hidden" name="subject_id" value="{{ sub.id }}">
-                            <button type="submit" name="delete_subject" class="btn-red">Удалить</button>
-                        </form>
-                    </div>
-                    {% endfor %}
+                        <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                <div>
+                                    <strong>{{ sub.name }}</strong>
+                                    {% if sub.is_universal %}
+                                        <span style="background: #17a2b8; color: white; font-size: 0.75em; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">
+                                            🌐 Для всех
+                                        </span>
+                                    {% endif %}
+                                    <span style="color: #666; font-size: 0.9em; margin-left: 10px;">{{ sub.price_per_lesson }} ₽</span>
+                                </div>
+                                <form method="post" onsubmit="return confirm('Удалить направление?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                                    <button type="submit" name="delete_subject" class="btn-red">Удалить</button>
+                                </form>
+                            </div>
+                            <!-- Форма изменения цены -->
+                            <form method="post" style="display: flex; gap: 8px; align-items: center;">
+                                {% csrf_token %}
+                                <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                                <input type="number" name="new_price" placeholder="Новая цена" 
+                                    value="{{ sub.price_per_lesson }}"
+                                    style="width: 120px; margin: 0; padding: 5px;">
+                                <button type="submit" name="update_price" 
+                                        style="background: #007bff; padding: 5px 10px; font-size: 0.85em;">
+                                    Изменить цену
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
                 </div>
             </div>
 
