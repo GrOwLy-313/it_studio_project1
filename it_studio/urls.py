@@ -31,4 +31,6 @@ urlpatterns = [
     path('homework/<int:hw_id>/check/', views.check_homework, name='homework_check'),
     path('homework/<int:hw_id>/delete/', views.delete_homework, name='homework_delete'),
     path('homework/<int:hw_id>/status/<str:status>/', views.update_homework_status, name='homework_status'),
+    path('chat/<int:user_id>/poll/', views.chat_poll, name='chat_poll'),
+    path('chat/<int:user_id>/send/', views.chat_send, name='chat_send'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

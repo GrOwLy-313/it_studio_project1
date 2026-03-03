@@ -1,6 +1,6 @@
-from .models import Message, Notification
 
 def unread_messages(request):
+    from .models import Message, Notification
     if request.user.is_authenticated:
         msg_count = Message.objects.filter(receiver=request.user, is_read=False).count()
         notif_count = Notification.objects.filter(user=request.user, is_read=False).count()

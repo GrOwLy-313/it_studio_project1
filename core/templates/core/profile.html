@@ -171,7 +171,7 @@
                         <td><span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:13px;">{{ stat.subject__name }}</span></td>
                         <td style="font-family:'JetBrains Mono',monospace;color:var(--muted2);">{{ stat.rate }} ₽</td>
                         <td style="font-weight:700;color:var(--accent2);">{{ stat.lesson_count }}</td>
-                        <td style="font-weight:700;color:var(--green);">{{ stat.rate }} × {{ stat.lesson_count }} ₽</td>
+                        <td style="font-weight:700;color:var(--green);">{{ stat.subtotal }} ₽</td>
                     </tr>
                     {% empty %}
                     <tr class="empty-row"><td colspan="5">Данных по проведённым урокам пока нет</td></tr>
