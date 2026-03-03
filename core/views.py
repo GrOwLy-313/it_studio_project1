@@ -20,7 +20,23 @@ def is_teacher_or_admin(user):
 
 @login_required
 def calendar_view(request):
-    # 1. Сначала определяем, какие уроки показывать (ЛОГИКА ПОЛУЧЕНИЯ УРОКОВ)
+    # --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
+    now = timezone.now()
+    # Ищем уроки, время которых меньше текущего, а статус всё еще "Запланирован"
+    past_lessons = Lesson.objects.filter(date_time__lt=now, status='scheduled')
+    
+    for lesson in past_lessons:
+        # Ищем ставку учителя за этот предмет
+        rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
+        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
+        
+        # Списываем баланс и меняем статус
+        lesson.status = 'done'
+        lesson.student.balance -= price
+        lesson.student.save()
+        lesson.save()
+
+    # --- ОТОБРАЖЕНИЕ (Твой оригинальный код) ---
     if request.user.role == 'student':
         lessons = Lesson.objects.filter(student=request.user).order_by('date_time')
     elif request.user.role == 'teacher':
@@ -28,7 +44,7 @@ def calendar_view(request):
     else:  # Для админа показываем вообще все уроки
         lessons = Lesson.objects.all().order_by('date_time')
 
-    # 2. Обработка создания нового занятия (POST-запрос)
+    # Обработка создания нового занятия
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
         subject_id = request.POST.get('subject')
         student_id = request.POST.get('student')
@@ -40,7 +56,6 @@ def calendar_view(request):
             subject = Subject.objects.get(id=subject_id)
             student = User.objects.get(id=student_id)
             
-            # Если админ — берем учителя из формы, если учитель — берем себя
             if request.user.role == 'admin':
                 teacher = User.objects.get(id=teacher_id)
             else:
@@ -59,20 +74,27 @@ def calendar_view(request):
                 )
             return redirect('calendar')
 
-    # 3. Отправляем всё в шаблон
     return render(request, 'core/calendar.html', {
-        'lessons': lessons,  # ТЕПЕРЬ ОНА ОПРЕДЕЛЕНА ВЫШЕ
+        'lessons': lessons,
         'subjects': Subject.objects.all(),
         'students': User.objects.filter(role='student'),
         'teachers': User.objects.filter(role='teacher'),
     })
 
 @login_required
+@user_passes_test(is_admin) # Учителя больше не могут удалять
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    # Учитель удаляет свое, админ - всё
-    if request.user == lesson.teacher or request.user.role == 'admin':
-        lesson.delete()
+    
+    # Если админ удаляет уже проведенный урок — возвращаем деньги ученику
+    if lesson.status == 'done':
+        rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
+        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
+        
+        lesson.student.balance += price
+        lesson.student.save()
+        
+    lesson.delete()
     return redirect('calendar')
 
 @login_required
@@ -109,21 +131,21 @@ def chat_view(request, user_id):
 def update_lesson_status(request, lesson_id, status):
     lesson = get_object_or_404(Lesson, id=lesson_id)
     
-    if status == 'done' and lesson.status != 'done':
+    # 1. Если статус меняется С "Проведено" на любой другой — возвращаем деньги
+    if lesson.status == 'done' and status != 'done':
         rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
-        
         price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
+        lesson.student.balance += price
+        lesson.student.save()
         
+    # 2. Если статус меняется НА "Проведено" с любого другого — списываем деньги
+    elif lesson.status != 'done' and status == 'done':
+        rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
+        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
         lesson.student.balance -= price
         lesson.student.save()
-        
-    elif lesson.status == 'done' and status != 'done':
-        rate_obj = TeacherRate.objects.filter(teacher=lesson.teacher, subject=lesson.subject).first()
-        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
-        
-        lesson.student.balance += price # Возвращаем деньги
-        lesson.student.save()
 
+    # Сохраняем новый статус
     lesson.status = status
     lesson.save()
     return redirect('calendar')

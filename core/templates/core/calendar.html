@@ -11,10 +11,8 @@
         th { background: #f8f9fa; color: #666; }
         .status { padding: 5px 10px; border-radius: 4px; font-size: 0.9em; }
         .status-scheduled { background: #fff3cd; color: #856404; }
-        .status-done { background: #28a745; color: white; border: none; }
-        .status-done:hover { background: #218838; }
-        .status-canceled { background: #dc3545; color: white; border: none; }
-        .status-canceled:hover { background: #c82333; }
+        .status-done { background: #28a745; color: white; }
+        .status-canceled { background: #dc3545; color: white; }
         .user-info { font-weight: bold; }
         .chat-link { color: #007bff; text-decoration: none; font-weight: bold; }
         .chat-link:hover { text-decoration: underline; }
@@ -26,12 +24,14 @@
         .btn-submit { background: #28a745; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-submit:hover { background: #218838; }
 
-        .btn-delete { color: #dc3545; text-decoration: none; font-size: 1.1em; margin-left: 10px; vertical-align: middle; }
+        .btn-delete { color: #dc3545; text-decoration: none; font-size: 0.9em; font-weight: bold; margin-top: 5px; display: inline-block; }
         
-        /* Стиль для пометки переноса */
         .rescheduled-label { color: #d9534f; font-size: 0.75em; margin-top: 4px; display: block; }
         .reschedule-form { margin-top: 10px; border-top: 1px dashed #ddd; padding-top: 10px; }
         .btn-reschedule { background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+        
+        /* Стиль для селекта статуса */
+        .status-select { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85em; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -97,19 +97,26 @@
             </td>
             <td>
                 {% if user.role == 'teacher' or user.role == 'admin' %}
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <div style="font-size: 0.8em; margin-bottom: 2px;">
-                            Сейчас: <b>{{ lesson.get_status_display }}</b>
-                            <a href="{% url 'delete_lesson' lesson.id %}" class="btn-delete" title="Удалить" onclick="return confirm('Удалить занятие?')">🗑</a>
-                        </div>
-                        <div style="display: flex; gap: 5px;">
-                            <a href="{% url 'update_status' lesson.id 'done' %}" class="status status-done" style="text-decoration: none; font-size: 0.7em;">Выполнено</a>
-                            <a href="{% url 'update_status' lesson.id 'canceled' %}" class="status status-canceled" style="text-decoration: none; font-size: 0.7em;">Отмена</a>
-                        </div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; min-width: 150px;">
+                        <select class="status-select" onchange="window.location.href=this.value;">
+                            <option value="{% url 'update_status' lesson.id 'scheduled' %}" {% if lesson.status == 'scheduled' %}selected{% endif %}>
+                                ⏳ Запланирован
+                            </option>
+                            <option value="{% url 'update_status' lesson.id 'done' %}" {% if lesson.status == 'done' %}selected{% endif %}>
+                                ✅ Проведён
+                            </option>
+                            <option value="{% url 'update_status' lesson.id 'canceled' %}" {% if lesson.status == 'canceled' %}selected{% endif %}>
+                                ❌ Отменён
+                            </option>
+                        </select>
+                        
+                        {% if user.role == 'admin' %}
+                            <a href="{% url 'delete_lesson' lesson.id %}" class="btn-delete" onclick="return confirm('Удалить занятие? Деньги будут возвращены на баланс, если статус был «Проведено».')">🗑 Удалить занятие</a>
+                        {% endif %}
                         
                         <form action="{% url 'reschedule_lesson' lesson.id %}" method="post" class="reschedule-form">
                             {% csrf_token %}
-                            <input type="datetime-local" name="new_date" required style="font-size: 0.7em; padding: 3px;">
+                            <input type="datetime-local" name="new_date" required style="font-size: 0.7em; padding: 3px; width: 130px;">
                             <button type="submit" class="btn-reschedule">Перенести</button>
                         </form>
                     </div>
@@ -185,12 +192,12 @@
     </form>
 </div>
 {% endif %}
+
 <script>
-    // Скрипт установит дефолтное время на 16:00 следующего дня
     window.onload = function() {
         let now = new Date();
-        now.setDate(now.getDate() + 1); // Завтра
-        now.setHours(16, 0, 0, 0); // Ровно 16:00
+        now.setDate(now.getDate() + 1); 
+        now.setHours(16, 0, 0, 0); 
         
         let year = now.getFullYear();
         let month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -199,7 +206,8 @@
         let minutes = now.getMinutes().toString().padStart(2, '0');
         
         let formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
-        document.getElementById('lesson_date_time').value = formattedDate;
+        let input = document.getElementById('lesson_date_time');
+        if (input) input.value = formattedDate;
     }
 </script>
 </body>
