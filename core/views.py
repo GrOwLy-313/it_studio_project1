@@ -74,7 +74,12 @@ def calendar_view(request):
         student_id = request.POST.get('student')
         teacher_id = request.POST.get('teacher')
         start_date_str = request.POST.get('date_time')
-        repeat = request.POST.get('repeat') == 'on'
+
+        # Количество занятий: от 1 до 52 недель
+        try:
+            iterations = max(1, min(52, int(request.POST.get('repeat_count', 1))))
+        except (ValueError, TypeError):
+            iterations = 1
 
         if subject_id and student_id and start_date_str:
             subject = Subject.objects.get(id=subject_id)
@@ -85,16 +90,13 @@ def calendar_view(request):
             else:
                 teacher = request.user
 
-            # FIX: парсим дату правильно и делаем aware
+            # Парсим дату правильно и делаем aware
             start_date = parse_datetime(start_date_str)
             if start_date is None:
-                # fallback на случай формата без секунд
                 from datetime import datetime as dt
                 start_date = dt.fromisoformat(start_date_str)
             if timezone.is_naive(start_date):
                 start_date = timezone.make_aware(start_date)
-
-            iterations = 4 if repeat else 1
 
             conflicts = []
             for i in range(iterations):
@@ -126,12 +128,14 @@ def calendar_view(request):
                     students = User.objects.filter(id__in=student_ids)
 
                 return render(request, 'core/calendar.html', {
-                    'lessons': lessons,
+                    'lessons': Lesson.objects.filter(teacher=teacher).order_by('date_time')
+                              if request.user.role == 'teacher'
+                              else Lesson.objects.all().order_by('date_time'),
                     'subjects': available_subjects,
                     'students': students,
                     'teachers': User.objects.filter(role='teacher'),
-                    'period_filter': period_filter or 'all',
-                    'conflict_error': f'⚠ У учителя уже есть занятие в это время: {conflict_str}',
+                    'period_filter': 'all',
+                    'conflict_error': f'У учителя уже есть занятие в это время: {conflict_str}',
                 })
 
             for i in range(iterations):

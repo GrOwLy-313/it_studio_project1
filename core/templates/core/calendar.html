@@ -45,46 +45,86 @@
         font-size: 13px; color: var(--yellow); font-weight: 600;
     }
 
-    /* FILTER BAR */
-    .filter-bar {
+    /* TOOLBAR */
+    .toolbar {
         background: var(--surface); border: 1px solid var(--border);
-        border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
-        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        border-radius: 14px; padding: 14px 18px;
+        margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap;
         transition: background 0.3s, border-color 0.3s;
     }
-    .filter-bar label { color: var(--muted); font-size: 13px; font-weight: 600; }
-    .filter-bar select, .filter-bar input[type="month"] {
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: 8px; color: var(--text); padding: 8px 12px;
+    .toolbar-form {
+        display: flex; align-items: center; gap: 6px;
+        flex: 1; flex-wrap: wrap;
+    }
+    .toolbar-group {
+        display: flex; align-items: center; gap: 8px;
+    }
+    .toolbar-label {
+        font-size: 12px; font-weight: 700; color: var(--muted);
+        white-space: nowrap;
+    }
+    .toolbar-select {
+        background: var(--surface2); border: 1.5px solid var(--border);
+        border-radius: 8px; color: var(--text); padding: 7px 10px;
         font-family: 'Manrope', sans-serif; font-size: 13px; outline: none;
-        transition: background 0.3s, border-color 0.3s;
+        transition: border-color 0.2s, background 0.3s; height: 36px;
     }
+    .toolbar-select:focus { border-color: var(--accent); }
+    .toolbar-divider {
+        width: 1px; height: 24px; background: var(--border); margin: 0 4px;
+    }
+    .toolbar-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* Кнопки периода — таблетки */
+    .period-pills {
+        display: flex; background: var(--surface2);
+        border: 1.5px solid var(--border); border-radius: 8px;
+        overflow: hidden;
+    }
+    .period-pill {
+        padding: 6px 16px; border: none; background: transparent;
+        color: var(--muted2); font-family: 'Manrope', sans-serif;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all 0.15s; white-space: nowrap;
+        border-right: 1px solid var(--border);
+    }
+    .period-pill:last-child { border-right: none; }
+    .period-pill:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .period-pill.active { background: var(--accent); color: white; }
+    [data-theme="light"] .period-pill:hover { background: rgba(0,0,0,0.04); }
+
     .btn-filter {
-        padding: 8px 16px; background: var(--accent); border: none;
+        padding: 7px 14px; background: var(--accent); border: none;
         border-radius: 8px; color: white; font-family: 'Manrope', sans-serif;
-        font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all 0.2s; height: 36px;
     }
     .btn-filter:hover { background: #2563eb; }
-    .btn-reset { color: var(--muted); font-size: 13px; text-decoration: none; }
-    .btn-reset:hover { color: var(--text); }
+    .btn-reset {
+        color: var(--muted); font-size: 13px; text-decoration: none;
+        font-weight: 600; padding: 4px 8px; border-radius: 6px;
+        transition: color 0.15s;
+    }
+    .btn-reset:hover { color: var(--red); }
     .btn-export {
-        margin-left: auto; padding: 8px 16px;
+        padding: 7px 14px; height: 36px;
         background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
         border-radius: 8px; color: var(--green); text-decoration: none;
         font-size: 13px; font-weight: 600; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 6px;
+        white-space: nowrap;
     }
     .btn-export:hover { background: rgba(16,185,129,0.2); }
 
-    /* PERIOD BUTTONS */
-    .period-bar { margin-bottom: 20px; }
-    .period-btn {
-        padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
-        background: var(--surface); color: var(--muted2);
-        font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
-        cursor: pointer; transition: all 0.2s;
+    @media (max-width: 1100px) {
+        .toolbar { padding: 12px 14px; }
+        .toolbar-divider { display: none; }
+        .toolbar-form { gap: 8px; }
+        .toolbar-select { width: 100%; }
+        .btn-export { width: 100%; justify-content: center; }
     }
-    .period-btn:hover { color: var(--text); border-color: var(--accent); }
-    .period-btn-active { background: var(--accent) !important; color: white !important; border-color: var(--accent) !important; }
 
     /* TABLE WRAP */
     .table-wrap {
@@ -141,40 +181,122 @@
     }
 
     /* ADD FORM */
-    .add-form-card {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 16px; padding: 28px; margin-top: 24px;
-        transition: background 0.3s, border-color 0.3s;
-    }
+    .add-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 24px; transition: background 0.3s, border-color 0.3s; }
     .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+
+    /* Две строки: поля выбора + кнопка */
+    .form-row { display: grid; gap: 14px; margin-bottom: 14px; }
+    .form-row-main { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .form-row-bottom { grid-template-columns: 1fr 120px; align-items: end; }
+
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
-    .form-group select, .form-group input[type="datetime-local"] {
+    .form-group select,
+    .form-group input[type="datetime-local"],
+    .form-group input[type="number"] {
         background: var(--surface2); border: 1.5px solid var(--border);
         border-radius: 10px; color: var(--text); padding: 10px 12px;
         font-family: 'Manrope', sans-serif; font-size: 14px; outline: none;
         transition: border-color 0.2s, background 0.3s;
+        min-height: 44px; width: 100%;
     }
-    .form-group select:focus, .form-group input:focus { border-color: var(--accent); }
-    .checkbox-label {
-        display: flex; align-items: center; gap: 8px;
-        color: var(--muted2); font-size: 13px; font-weight: 600;
-        cursor: pointer; padding: 10px 0;
-    }
-    .checkbox-label input { width: auto; accent-color: var(--accent); }
+    .form-group select:focus,
+    .form-group input:focus { border-color: var(--accent); }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
     .btn-create {
         padding: 11px 20px;
         background: linear-gradient(135deg, var(--green), #059669);
         border: none; border-radius: 10px; color: white;
         font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700;
-        cursor: pointer; transition: all 0.2s; white-space: nowrap; width: 100%;
+        cursor: pointer; transition: all 0.2s; width: 100%;
+        min-height: 44px;
     }
     .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
+
+    @media (max-width: 1100px) {
+        .form-row-bottom { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+        .form-row-main { grid-template-columns: 1fr; }
+    }
 
     /* ARCHIVE ROW */
     .archive-row { opacity: 0.82; }
     .archive-row:hover { opacity: 1; }
+
+    /* КНОПКА БЫСТРОГО ПЕРЕХОДА К ФОРМЕ */
+    .btn-add-jump {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 7px 16px; height: 36px;
+        background: linear-gradient(135deg, var(--green), #059669);
+        border-radius: 8px; color: white; text-decoration: none;
+        font-size: 13px; font-weight: 700;
+        box-shadow: 0 2px 10px rgba(16,185,129,0.25);
+        transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-add-jump:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(16,185,129,0.4);
+    }
+
+    /* ================================================
+       МОБИЛЬНЫЕ КАРТОЧКИ РАСПИСАНИЯ (≤ 1100px)
+       таблица скрывается, вместо неё — карточки
+       ================================================ */
+    .lesson-cards { display: none; flex-direction: column; gap: 12px; }
+
+    .lesson-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        border-left: 4px solid var(--card-color, var(--accent));
+        transition: background 0.3s, border-color 0.3s;
+        position: relative;
+    }
+    .lc-top {
+        display: flex; align-items: flex-start;
+        justify-content: space-between; gap: 10px;
+        margin-bottom: 12px;
+    }
+    .lc-date .lc-day { font-weight: 700; color: var(--accent); font-size: 13px; }
+    .lc-date .lc-dt  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted2); margin-top: 2px; }
+    .lc-date .lc-moved { font-size: 11px; color: var(--yellow); margin-top: 4px; }
+
+    .lc-body { display: flex; flex-direction: column; gap: 10px; }
+    .lc-row  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lc-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 70px; }
+
+    .lc-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .lc-actions .status-select { width: 100%; }
+    .lc-actions .reschedule-form { flex-wrap: wrap; }
+    .lc-actions .reschedule-form input { flex: 1; min-width: 160px; }
+    .lc-actions .btn-reschedule,
+    .lc-actions .btn-delete-lesson { width: 100%; text-align: center; justify-content: center; padding: 10px; }
+
+    @media (max-width: 1100px) {
+        .table-wrap table { display: none; }
+        .lesson-cards { display: flex; }
+
+        .filter-bar { padding: 12px 14px; gap: 8px; }
+        .filter-bar select,
+        .filter-bar input[type="month"] { width: 100%; }
+        .btn-export { margin-left: 0; width: 100%; text-align: center; justify-content: center; }
+
+        .period-bar form { gap: 6px; }
+        .period-btn { padding: 8px 14px; font-size: 13px; flex: 1; text-align: center; }
+
+        .tabs { width: 100%; }
+        .tab-btn { flex: 1; justify-content: center; }
+
+        .add-form-card { padding: 18px 16px; }
+        .form-grid { grid-template-columns: 1fr; gap: 12px; }
+    }
+
+    @media (max-width: 480px) {
+        .lc-top { flex-direction: column; gap: 6px; }
+    }
 </style>
 {% endblock %}
 
@@ -207,25 +329,31 @@
         🗂 Показаны занятия старше 3 дней
     </div>
 
-    <div class="filter-bar">
-        <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+    <div class="toolbar">
+        <form method="get" class="toolbar-form">
             {% if user.role == 'admin' %}
-            <label>Учитель:</label>
-            <select name="teacher_filter">
-                <option value="">— Все —</option>
-                {% for t in teachers %}
-                    <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
-                        {{ t.username }}
-                    </option>
-                {% endfor %}
-            </select>
+            <div class="toolbar-group">
+                <span class="toolbar-label">👨‍🏫 Учитель</span>
+                <select name="teacher_filter" class="toolbar-select">
+                    <option value="">— Все —</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                            {{ t.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
             {% endif %}
-            <label>Месяц:</label>
-            <input type="month" name="month" value="{{ month_filter }}">
-            <button type="submit" class="btn-filter">Применить</button>
-            {% if request.GET.teacher_filter or request.GET.month %}
-                <a href="{% url 'archive' %}" class="btn-reset">Сбросить</a>
-            {% endif %}
+            <div class="toolbar-group">
+                <span class="toolbar-label">📅 Месяц</span>
+                <input type="month" name="month" value="{{ month_filter }}" class="toolbar-select">
+            </div>
+            <div class="toolbar-actions">
+                <button type="submit" class="btn-filter">Применить</button>
+                {% if request.GET.teacher_filter or request.GET.month %}
+                    <a href="{% url 'archive' %}" class="btn-reset">✕ Сбросить</a>
+                {% endif %}
+            </div>
         </form>
         {% if user.role == 'admin' %}
             <a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>
@@ -234,43 +362,52 @@
 
 {% else %}
     <!-- ===== РАСПИСАНИЕ ===== -->
-    {% if user.role == 'admin' %}
-    <div class="filter-bar">
-        <label>🔍 Учитель:</label>
-        <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
-            <select name="teacher_filter">
-                <option value="">— Все учителя —</option>
-                {% for t in teachers %}
-                    <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
-                        {{ t.username }}
-                    </option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-filter">Применить</button>
-            {% if request.GET.teacher_filter %}
-                <a href="{% url 'calendar' %}" class="btn-reset">Сбросить</a>
-            {% endif %}
-        </form>
-        <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
-    </div>
-    {% endif %}
-
-    <div class="period-bar">
-        <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div class="toolbar">
+        <form method="get" class="toolbar-form">
             {% if request.GET.teacher_filter %}
                 <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
             {% endif %}
-            <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
-            <button type="submit" name="period" value="all"   class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">Все</button>
-            <button type="submit" name="period" value="week"  class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">Неделя</button>
-            <button type="submit" name="period" value="month" class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">Месяц</button>
+
+            {% if user.role == 'admin' %}
+            <div class="toolbar-group">
+                <span class="toolbar-label">👨‍🏫 Учитель</span>
+                <select name="teacher_filter" class="toolbar-select">
+                    <option value="">— Все учителя —</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                            {{ t.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="toolbar-divider"></div>
+            {% endif %}
+
+            <div class="toolbar-group">
+                <span class="toolbar-label">📆 Период</span>
+                <div class="period-pills">
+                    <button type="submit" name="period" value="all"   class="period-pill {% if period_filter == 'all' %}active{% endif %}">Все</button>
+                    <button type="submit" name="period" value="week"  class="period-pill {% if period_filter == 'week' %}active{% endif %}">Неделя</button>
+                    <button type="submit" name="period" value="month" class="period-pill {% if period_filter == 'month' %}active{% endif %}">Месяц</button>
+                </div>
+            </div>
+
+            {% if user.role == 'admin' and request.GET.teacher_filter %}
+            <div class="toolbar-actions">
+                <a href="{% url 'calendar' %}" class="btn-reset">✕ Сбросить</a>
+            </div>
+            {% endif %}
         </form>
+
+        {% if user.role == 'admin' %}
+            <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
+        {% endif %}
+        {% if user.role != 'student' %}
+            <a href="#add-lesson-form" class="btn-add-jump">➕ Добавить занятие</a>
+        {% endif %}
     </div>
 
-    {% if conflict_error %}
-    <div class="conflict-error">{{ conflict_error }}</div>
     {% endif %}
-{% endif %}
 
 <!-- ТАБЛИЦА -->
 <div class="table-wrap">
@@ -359,13 +496,99 @@
     </table>
 </div>
 
+<!-- МОБИЛЬНЫЕ КАРТОЧКИ (показываются при ≤ 1100px вместо таблицы) -->
+<div class="lesson-cards">
+    {% for lesson in lessons %}
+    <div class="lesson-card {% if is_archive %}archive-row{% endif %}"
+         style="--card-color: {{ lesson.subject.color }}">
+
+        <div class="lc-top">
+            <div class="lc-date">
+                <div class="lc-day">{{ lesson.date_time|date:"l" }}</div>
+                <div class="lc-dt">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
+                {% if lesson.original_date_time %}
+                    <div class="lc-moved">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
+                {% endif %}
+            </div>
+            {% if user.role != 'student' %}
+                <span class="subject-pill subject-pill-colored" data-color="{{ lesson.subject.color }}">{{ lesson.subject.name }}</span>
+            {% endif %}
+        </div>
+
+        <div class="lc-body">
+            <div class="lc-row">
+                <span class="lc-label">
+                    {% if user.role == 'admin' %}Участники{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}
+                </span>
+                <span style="font-weight:600;">
+                    {% if user.role == 'student' %}
+                        {{ lesson.teacher.username }}
+                    {% elif user.role == 'admin' %}
+                        👨‍🏫 {{ lesson.teacher.username }} &nbsp;·&nbsp; 🎓 {{ lesson.student.username }}
+                    {% else %}
+                        {{ lesson.student.username }}
+                    {% endif %}
+                </span>
+            </div>
+
+            {% if is_archive or user.role == 'student' %}
+            <div class="lc-row">
+                <span class="lc-label">Статус</span>
+                <span class="status-badge status-{{ lesson.status }}">
+                    {% if lesson.status == 'scheduled' %}⏳ Запланирован
+                    {% elif lesson.status == 'done' %}✅ Проведён
+                    {% else %}❌ Отменён{% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            {% if not is_archive %}
+            <div class="lc-row">
+                <span class="lc-label">Связь</span>
+                {% if user.role == 'student' %}
+                    <a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
+                {% else %}
+                    <a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if not is_archive and user.role in 'teacher admin' %}
+        <div class="lc-actions">
+            <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
+                <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
+                <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
+                <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
+            </select>
+            <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
+                {% csrf_token %}
+                <input type="datetime-local" name="new_date" required>
+                <button type="submit" class="btn-reschedule">📅 Перенести</button>
+            </form>
+            {% if user.role == 'admin' %}
+                <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <div class="big">{% if is_archive %}🗂{% else %}📭{% endif %}</div>
+        <p>{% if is_archive %}Архив пуст{% else %}Занятий пока нет{% endif %}</p>
+    </div>
+    {% endfor %}
+</div>
+
 <!-- Форма добавления — только в режиме расписания -->
 {% if not is_archive and user.role != 'student' %}
-<div class="add-form-card">
+<div class="add-form-card" id="add-lesson-form">
     <h3>➕ Добавить новое занятие</h3>
     <form method="post">
         {% csrf_token %}
-        <div class="form-grid">
+
+        <!-- Строка 1: все поля выбора -->
+        <div class="form-row form-row-main">
             {% if user.role == 'admin' %}
             <div class="form-group">
                 <label>Учитель</label>
@@ -394,13 +617,18 @@
                 <input type="datetime-local" id="lesson_date_time" name="date_time" required>
             </div>
             <div class="form-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="repeat"> Повторить на месяц (4 занятия)
-                </label>
+                <label>Повторений (недель)</label>
+                <input type="number" name="repeat_count" value="1" min="1" max="52">
+                <span class="form-hint">1 = разово, 4 = 4 недели подряд...</span>
             </div>
-            <div class="form-group">
-                <button type="submit" class="btn-create">✓ Создать занятие</button>
-            </div>
+        </div>
+
+        <!-- Строка 2: ошибка + кнопка -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            {% if conflict_error %}
+            <div class="conflict-error">{{ conflict_error }}</div>
+            {% endif %}
+            <button type="submit" class="btn-create">✓ Создать занятие</button>
         </div>
     </form>
 </div>
@@ -411,6 +639,7 @@
 <script>
     // Цветовые метки строк и пилюль по цвету направления
     document.addEventListener('DOMContentLoaded', () => {
+        // Цвет строк таблицы
         document.querySelectorAll('tr[data-color]').forEach(row => {
             const color = row.dataset.color;
             if (!color) return;
@@ -420,6 +649,17 @@
             if (pill) {
                 pill.style.setProperty('--pill-color', color);
                 pill.classList.add('subject-pill-colored');
+            }
+        });
+
+        // Цвет карточек мобильного вида
+        document.querySelectorAll('.lesson-card').forEach(card => {
+            const color = card.dataset.color;
+            if (!color) return;
+            card.style.setProperty('--card-color', color);
+            const pill = card.querySelector('.subject-pill-colored[data-color]');
+            if (pill) {
+                pill.style.setProperty('--pill-color', pill.dataset.color);
             }
         });
     });

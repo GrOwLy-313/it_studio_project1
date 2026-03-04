@@ -11,7 +11,22 @@
 </head>
 <body>
 
-<nav class="sidebar">
+<!-- МОБИЛЬНЫЙ ТОПБАР -->
+<div class="mobile-topbar">
+    <div class="badge">⚡ ITишник</div>
+</div>
+
+<!-- БУРГЕР-КНОПКА -->
+<button class="burger-btn" id="burgerBtn" aria-label="Меню">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<!-- ЗАТЕМНЕНИЕ ПОД САЙДБАРОМ -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
         <div class="badge">⚡ ITишник</div>
     </div>
@@ -80,7 +95,7 @@
 {% block extra_js %}{% endblock %}
 
 <script>
-    // Тема — читаем из localStorage, применяем сразу
+    /* ---- ТЕМА ---- */
     const html = document.documentElement;
     const toggle = document.getElementById('themeToggle');
     const label = document.getElementById('theme-label');
@@ -92,13 +107,54 @@
         localStorage.setItem('theme', theme);
     }
 
-    // Применяем сохранённую тему при загрузке
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
 
-    // Переключение
     toggle.addEventListener('change', () => {
         applyTheme(toggle.checked ? 'light' : 'dark');
+    });
+
+    /* ---- БУРГЕР-МЕНЮ ---- */
+    const burger  = document.getElementById('burgerBtn');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('visible');
+        burger.classList.add('open');
+        document.body.style.overflow = 'hidden'; // блокируем скролл страницы
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+        burger.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    burger.addEventListener('click', () => {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    // Закрываем при переходе по ссылке внутри сайдбара
+    sidebar.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', closeSidebar);
+    });
+
+    // Закрываем по Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeSidebar();
+    });
+
+    // На широком экране всегда сбрасываем мобильное состояние
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            closeSidebar();
+            document.body.style.overflow = '';
+        }
     });
 </script>
 
