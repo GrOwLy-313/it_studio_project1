@@ -1,522 +1,419 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание — ITишник</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0a0e1a; --surface: #111827; --surface2: #1a2235;
-            --border: #1e2d47; --accent: #3b82f6; --accent2: #06b6d4;
-            --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
-            --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+{% extends 'core/base.html' %}
+{% load static %}
 
-        .sidebar {
-            position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
-            background: var(--surface); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; z-index: 100; padding: 24px 0;
-        }
-        .sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-        .sidebar-logo .badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            padding: 8px 16px; border-radius: 50px;
-            font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px; color: white;
-        }
-        .sidebar-user { padding: 12px 20px; margin-bottom: 8px; }
-        .sidebar-user .name { font-weight: 700; font-size: 14px; }
-        .sidebar-user .role { font-size: 11px; color: var(--accent2); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-        .nav-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 20px; color: var(--muted2); text-decoration: none;
-            font-size: 14px; font-weight: 600; transition: all 0.15s;
-            border-left: 3px solid transparent; margin: 2px 0;
-        }
-        .nav-item:hover { color: var(--text); background: var(--surface2); }
-        .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,0.08); }
-        .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
-        .nav-badge {
-            margin-left: auto; background: var(--red); color: white;
-            font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
-        }
-        .sidebar-bottom { margin-top: auto; padding: 0 20px; border-top: 1px solid var(--border); padding-top: 16px; }
-        .btn-logout {
-            width: 100%; padding: 10px; background: rgba(239,68,68,0.1);
-            border: 1px solid rgba(239,68,68,0.2); border-radius: 10px;
-            color: #fca5a5; font-family: 'Manrope', sans-serif; font-size: 14px;
-            font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        .btn-logout:hover { background: rgba(239,68,68,0.2); }
+{% block title %}Расписание — ITишник{% endblock %}
+{% block nav_calendar %}active{% endblock %}
 
-        .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
-        .page-header { margin-bottom: 20px; }
-        .page-header h1 { font-size: 26px; font-weight: 800; }
-        .page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+{% block extra_css %}
+<style>
+    /* ВКЛАДКИ */
+    .tabs {
+        display: flex; gap: 4px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 4px;
+        margin-bottom: 24px; width: fit-content;
+    }
+    .tab-btn {
+        padding: 9px 24px; border-radius: 9px; border: none;
+        font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s; color: var(--muted2);
+        background: transparent; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+        background: var(--accent); color: white;
+        box-shadow: 0 2px 12px rgba(59,130,246,0.35);
+    }
+    .tab-btn.archive-active {
+        background: var(--surface2); color: var(--muted2);
+        border: 1px solid var(--border);
+    }
+    .tab-btn.archive-active.active {
+        background: rgba(245,158,11,0.15);
+        color: var(--yellow);
+        border-color: rgba(245,158,11,0.3);
+        box-shadow: 0 2px 12px rgba(245,158,11,0.15);
+    }
 
-        /* ВКЛАДКИ */
-        .tabs {
-            display: flex; gap: 4px;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 12px; padding: 4px;
-            margin-bottom: 24px; width: fit-content;
-        }
-        .tab-btn {
-            padding: 9px 24px; border-radius: 9px; border: none;
-            font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; color: var(--muted2);
-            background: transparent; text-decoration: none; display: inline-flex;
-            align-items: center; gap: 8px;
-        }
-        .tab-btn:hover { color: var(--text); }
-        .tab-btn.active {
-            background: var(--accent); color: white;
-            box-shadow: 0 2px 12px rgba(59,130,246,0.35);
-        }
-        .tab-btn.archive-active {
-            background: var(--surface2); color: var(--muted2);
-            border: 1px solid var(--border);
-        }
-        .tab-btn.archive-active.active {
-            background: rgba(245,158,11,0.15);
-            color: var(--yellow);
-            border-color: rgba(245,158,11,0.3);
-            box-shadow: 0 2px 12px rgba(245,158,11,0.15);
-        }
+    /* Архивный баннер */
+    .archive-banner {
+        background: rgba(245,158,11,0.08);
+        border: 1px solid rgba(245,158,11,0.2);
+        border-radius: 12px; padding: 12px 18px;
+        margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+        font-size: 13px; color: var(--yellow); font-weight: 600;
+    }
 
-        /* Архивный баннер */
-        .archive-banner {
-            background: rgba(245,158,11,0.08);
-            border: 1px solid rgba(245,158,11,0.2);
-            border-radius: 12px; padding: 12px 18px;
-            margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
-            font-size: 13px; color: var(--yellow); font-weight: 600;
-        }
+    /* FILTER BAR */
+    .filter-bar {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .filter-bar label { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .filter-bar select, .filter-bar input[type="month"] {
+        background: var(--surface2); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--text); padding: 8px 12px;
+        font-family: 'Manrope', sans-serif; font-size: 13px; outline: none;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .btn-filter {
+        padding: 8px 16px; background: var(--accent); border: none;
+        border-radius: 8px; color: white; font-family: 'Manrope', sans-serif;
+        font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-filter:hover { background: #2563eb; }
+    .btn-reset { color: var(--muted); font-size: 13px; text-decoration: none; }
+    .btn-reset:hover { color: var(--text); }
+    .btn-export {
+        margin-left: auto; padding: 8px 16px;
+        background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+        border-radius: 8px; color: var(--green); text-decoration: none;
+        font-size: 13px; font-weight: 600; transition: all 0.2s;
+    }
+    .btn-export:hover { background: rgba(16,185,129,0.2); }
 
-        /* FILTER BAR */
-        .filter-bar {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
-            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-        }
-        .filter-bar label { color: var(--muted); font-size: 13px; font-weight: 600; }
-        .filter-bar select, .filter-bar input[type="month"] {
-            background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 8px; color: var(--text); padding: 8px 12px;
-            font-family: 'Manrope', sans-serif; font-size: 13px; outline: none;
-        }
-        .btn-filter {
-            padding: 8px 16px; background: var(--accent); border: none;
-            border-radius: 8px; color: white; font-family: 'Manrope', sans-serif;
-            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        .btn-filter:hover { background: #2563eb; }
-        .btn-reset { color: var(--muted); font-size: 13px; text-decoration: none; }
-        .btn-reset:hover { color: var(--text); }
-        .btn-export {
-            margin-left: auto; padding: 8px 16px;
-            background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
-            border-radius: 8px; color: var(--green); text-decoration: none;
-            font-size: 13px; font-weight: 600; transition: all 0.2s;
-        }
-        .btn-export:hover { background: rgba(16,185,129,0.2); }
+    /* PERIOD BUTTONS */
+    .period-bar { margin-bottom: 20px; }
+    .period-btn {
+        padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--surface); color: var(--muted2);
+        font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .period-btn:hover { color: var(--text); border-color: var(--accent); }
+    .period-btn-active { background: var(--accent) !important; color: white !important; border-color: var(--accent) !important; }
 
-        /* PERIOD BUTTONS — только для расписания */
-        .period-bar { margin-bottom: 20px; }
-        .period-btn {
-            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
-            background: var(--surface); color: var(--muted2);
-            font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s;
-        }
-        .period-btn:hover { color: var(--text); border-color: var(--accent); }
-        .period-btn-active { background: var(--accent) !important; color: white !important; border-color: var(--accent) !important; }
+    /* TABLE WRAP */
+    .table-wrap {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; overflow: hidden;
+        transition: background 0.3s, border-color 0.3s;
+    }
 
-        /* TABLE */
-        .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
-        thead th {
-            padding: 14px 18px; text-align: left;
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--muted);
-            background: var(--surface2); border-bottom: 1px solid var(--border);
-        }
-        tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(255,255,255,0.02); }
-        tbody td { padding: 16px 18px; font-size: 14px; vertical-align: top; }
+    /* DATE CELL */
+    .date-cell .day { font-weight: 700; color: var(--accent); font-size: 13px; text-transform: capitalize; }
+    .date-cell .datetime { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted2); margin-top: 2px; }
+    .rescheduled { font-size: 11px; color: var(--yellow); margin-top: 4px; }
 
-        .date-cell .day { font-weight: 700; color: var(--accent); font-size: 13px; text-transform: capitalize; }
-        .date-cell .datetime { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted2); margin-top: 2px; }
-        .rescheduled { font-size: 11px; color: var(--yellow); margin-top: 4px; }
+    /* STATUS SELECT */
+    .status-select {
+        background: var(--surface2); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--text); padding: 8px 10px;
+        font-family: 'Manrope', sans-serif; font-size: 13px;
+        font-weight: 600; cursor: pointer; outline: none; width: 100%;
+        transition: border-color 0.2s, background 0.3s;
+    }
+    .status-select:hover { border-color: var(--accent); }
 
-        .subject-pill {
-            display: inline-block; background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.25); color: var(--accent);
-            padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600;
-        }
+    /* RESCHEDULE FORM */
+    .reschedule-form { margin-top: 10px; display: flex; gap: 6px; align-items: center; }
+    .reschedule-form input {
+        background: var(--surface2); border: 1px solid var(--border);
+        border-radius: 6px; color: var(--text); padding: 6px 8px;
+        font-size: 12px; font-family: 'Manrope', sans-serif; outline: none;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .btn-reschedule {
+        padding: 6px 10px; background: rgba(59,130,246,0.15);
+        border: 1px solid rgba(59,130,246,0.3); border-radius: 6px;
+        color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer;
+        white-space: nowrap; transition: all 0.2s;
+    }
+    .btn-reschedule:hover { background: rgba(59,130,246,0.25); }
 
-        .status-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
-        }
-        .status-scheduled { background: rgba(245,158,11,0.12); color: var(--yellow); border: 1px solid rgba(245,158,11,0.25); }
-        .status-done { background: rgba(16,185,129,0.12); color: var(--green); border: 1px solid rgba(16,185,129,0.25); }
-        .status-canceled { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+    .btn-delete-lesson {
+        display: inline-block; margin-top: 8px; padding: 5px 10px;
+        background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+        border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600;
+        text-decoration: none; transition: all 0.2s; cursor: pointer;
+        font-family: 'Manrope', sans-serif;
+    }
+    .btn-delete-lesson:hover { background: rgba(239,68,68,0.15); }
 
-        .status-select {
-            background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 8px; color: var(--text); padding: 8px 10px;
-            font-family: 'Manrope', sans-serif; font-size: 13px;
-            font-weight: 600; cursor: pointer; outline: none; width: 100%;
-            transition: border-color 0.2s;
-        }
-        .status-select:hover { border-color: var(--accent); }
+    /* CONFLICT ERROR */
+    .conflict-error {
+        background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+        color: #fca5a5; font-size: 14px; font-weight: 600;
+    }
 
-        .reschedule-form { margin-top: 10px; display: flex; gap: 6px; align-items: center; }
-        .reschedule-form input {
-            background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 6px; color: var(--text); padding: 6px 8px;
-            font-size: 12px; font-family: 'Manrope', sans-serif; outline: none;
-        }
-        .btn-reschedule {
-            padding: 6px 10px; background: rgba(59,130,246,0.15);
-            border: 1px solid rgba(59,130,246,0.3); border-radius: 6px;
-            color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer;
-            white-space: nowrap; transition: all 0.2s;
-        }
-        .btn-reschedule:hover { background: rgba(59,130,246,0.25); }
-        .btn-delete-lesson {
-            display: inline-block; margin-top: 8px; padding: 5px 10px;
-            background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
-            border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600;
-            text-decoration: none; transition: all 0.2s; cursor: pointer;
-        }
-        .btn-delete-lesson:hover { background: rgba(239,68,68,0.15); }
+    /* ADD FORM */
+    .add-form-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 28px; margin-top: 24px;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .form-group select, .form-group input[type="datetime-local"] {
+        background: var(--surface2); border: 1.5px solid var(--border);
+        border-radius: 10px; color: var(--text); padding: 10px 12px;
+        font-family: 'Manrope', sans-serif; font-size: 14px; outline: none;
+        transition: border-color 0.2s, background 0.3s;
+    }
+    .form-group select:focus, .form-group input:focus { border-color: var(--accent); }
+    .checkbox-label {
+        display: flex; align-items: center; gap: 8px;
+        color: var(--muted2); font-size: 13px; font-weight: 600;
+        cursor: pointer; padding: 10px 0;
+    }
+    .checkbox-label input { width: auto; accent-color: var(--accent); }
+    .btn-create {
+        padding: 11px 20px;
+        background: linear-gradient(135deg, var(--green), #059669);
+        border: none; border-radius: 10px; color: white;
+        font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700;
+        cursor: pointer; transition: all 0.2s; white-space: nowrap; width: 100%;
+    }
+    .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
 
-        .chat-btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 14px; background: rgba(6,182,212,0.1);
-            border: 1px solid rgba(6,182,212,0.25); border-radius: 8px;
-            color: var(--accent2); text-decoration: none; font-size: 13px; font-weight: 600;
-            transition: all 0.2s;
-        }
-        .chat-btn:hover { background: rgba(6,182,212,0.2); }
-        .empty-row td { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; }
+    /* ARCHIVE ROW */
+    .archive-row { opacity: 0.82; }
+    .archive-row:hover { opacity: 1; }
+</style>
+{% endblock %}
 
-        /* ADD FORM */
-        .add-form-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 16px; padding: 28px; margin-top: 24px;
-        }
-        .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
-        .form-group select, .form-group input[type="datetime-local"] {
-            background: var(--surface2); border: 1.5px solid var(--border);
-            border-radius: 10px; color: var(--text); padding: 10px 12px;
-            font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;
-        }
-        .form-group select:focus, .form-group input:focus { border-color: var(--accent); }
-        .form-group .checkbox-label {
-            display: flex; align-items: center; gap: 8px;
-            color: var(--muted2); font-size: 13px; font-weight: 600;
-            cursor: pointer; padding: 10px 0;
-        }
-        .form-group .checkbox-label input { width: auto; accent-color: var(--accent); }
-        .btn-create {
-            padding: 11px 20px; background: linear-gradient(135deg, var(--green), #059669);
-            border: none; border-radius: 10px; color: white;
-            font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700;
-            cursor: pointer; transition: all 0.2s; white-space: nowrap;
-        }
-        .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
+{% block content %}
+<div class="page-header">
+    <h1>📅 Расписание занятий</h1>
+    <p>
+        {% if is_archive %}Архив прошедших занятий
+        {% elif user.role == 'student' %}Ваши предстоящие занятия
+        {% elif user.role == 'teacher' %}Ваши занятия и ученики
+        {% else %}Все занятия студии{% endif %}
+    </p>
+</div>
 
-        .row-colored { border-left: 3px solid var(--row-color, var(--accent)); }
-        .subject-pill-colored {
-            background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
-            border: 1px solid color-mix(in srgb, var(--pill-color, var(--accent)) 40%, transparent);
-            color: var(--pill-color, var(--accent));
-        }
-
-        /* Архив — строки чуть приглушённее */
-        .archive-row { opacity: 0.82; }
-        .archive-row:hover { opacity: 1; }
-    </style>
-</head>
-<body>
-
-<nav class="sidebar">
-    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
-    <div class="sidebar-user">
-        <div class="name">{{ user.username }}</div>
-        <div class="role">{{ user.get_role_display }}</div>
-    </div>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
-    {% endif %}
-    <a href="{% url 'calendar' %}" class="nav-item active"><span class="icon">📅</span> Расписание</a>
-    <a href="{% url 'messages_list' %}" class="nav-item">
-        <span class="icon">💬</span> Сообщения
-        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'notifications' %}" class="nav-item">
-        <span class="icon">🔔</span> Уведомления
-        {% if notif_count > 0 %}<span class="nav-badge">{{ notif_count }}</span>{% endif %}
+<!-- ВКЛАДКИ -->
+<div class="tabs">
+    <a href="{% url 'calendar' %}" class="tab-btn {% if not is_archive %}active{% endif %}">
+        📅 Расписание
     </a>
     {% if user.role != 'student' %}
-        <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
-        <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
+    <a href="{% url 'archive' %}" class="tab-btn archive-active {% if is_archive %}active{% endif %}">
+        🗂 Архив
+    </a>
     {% endif %}
-    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
+</div>
+
+{% if is_archive %}
+    <!-- ===== АРХИВ ===== -->
+    <div class="archive-banner">
+        🗂 Показаны занятия старше 3 дней
+    </div>
+
+    <div class="filter-bar">
+        <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+            {% if user.role == 'admin' %}
+            <label>Учитель:</label>
+            <select name="teacher_filter">
+                <option value="">— Все —</option>
+                {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                        {{ t.username }}
+                    </option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <label>Месяц:</label>
+            <input type="month" name="month" value="{{ month_filter }}">
+            <button type="submit" class="btn-filter">Применить</button>
+            {% if request.GET.teacher_filter or request.GET.month %}
+                <a href="{% url 'archive' %}" class="btn-reset">Сбросить</a>
+            {% endif %}
+        </form>
+        {% if user.role == 'admin' %}
+            <a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>
+        {% endif %}
+    </div>
+
+{% else %}
+    <!-- ===== РАСПИСАНИЕ ===== -->
     {% if user.role == 'admin' %}
-        <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
-        <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
+    <div class="filter-bar">
+        <label>🔍 Учитель:</label>
+        <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+            <select name="teacher_filter">
+                <option value="">— Все учителя —</option>
+                {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
+                        {{ t.username }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-filter">Применить</button>
+            {% if request.GET.teacher_filter %}
+                <a href="{% url 'calendar' %}" class="btn-reset">Сбросить</a>
+            {% endif %}
+        </form>
+        <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
+    </div>
     {% endif %}
-    <div class="sidebar-bottom">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn-logout">→ Выйти из системы</button>
+
+    <div class="period-bar">
+        <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            {% if request.GET.teacher_filter %}
+                <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
+            {% endif %}
+            <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
+            <button type="submit" name="period" value="all"   class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">Все</button>
+            <button type="submit" name="period" value="week"  class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">Неделя</button>
+            <button type="submit" name="period" value="month" class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">Месяц</button>
         </form>
     </div>
-</nav>
 
-<main class="main">
-    <div class="page-header">
-        <h1>📅 Расписание занятий</h1>
-        <p>{% if is_archive %}Архив прошедших занятий{% elif user.role == 'student' %}Ваши предстоящие занятия{% elif user.role == 'teacher' %}Ваши занятия и ученики{% else %}Все занятия студии{% endif %}</p>
-    </div>
-
-    <!-- ВКЛАДКИ -->
-    <div class="tabs">
-        <a href="{% url 'calendar' %}" class="tab-btn {% if not is_archive %}active{% endif %}">
-            📅 Расписание
-        </a>
-        <a href="{% url 'archive' %}" class="tab-btn archive-active {% if is_archive %}active{% endif %}">
-            🗂 Архив
-        </a>
-    </div>
-
-    {% if is_archive %}
-        <!-- ===== АРХИВ ===== -->
-        <div class="archive-banner">
-            🗂 Показаны занятия старше 3 дней
-        </div>
-
-        <!-- Фильтры архива -->
-        <div class="filter-bar">
-            <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
-                {% if user.role == 'admin' %}
-                <label>Учитель:</label>
-                <select name="teacher_filter">
-                    <option value="">— Все —</option>
-                    {% for t in teachers %}
-                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
-                            {{ t.username }}
-                        </option>
-                    {% endfor %}
-                </select>
-                {% endif %}
-                <label>Месяц:</label>
-                <input type="month" name="month" value="{{ month_filter }}">
-                <button type="submit" class="btn-filter">Применить</button>
-                {% if request.GET.teacher_filter or request.GET.month %}
-                    <a href="{% url 'archive' %}" class="btn-reset">Сбросить</a>
-                {% endif %}
-            </form>
-            {% if user.role == 'admin' %}
-                <a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>
-            {% endif %}
-        </div>
-
-    {% else %}
-        <!-- ===== РАСПИСАНИЕ ===== -->
-        {% if user.role == 'admin' %}
-        <div class="filter-bar">
-            <label>🔍 Учитель:</label>
-            <form method="get" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
-                <select name="teacher_filter">
-                    <option value="">— Все учителя —</option>
-                    {% for t in teachers %}
-                        <option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>
-                            {{ t.username }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn-filter">Применить</button>
-                {% if request.GET.teacher_filter %}
-                    <a href="{% url 'calendar' %}" class="btn-reset">Сбросить</a>
-                {% endif %}
-            </form>
-            <a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>
-        </div>
-        {% endif %}
-
-        <div class="period-bar">
-            <form method="get" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                {% if request.GET.teacher_filter %}
-                    <input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">
-                {% endif %}
-                <span style="color:var(--muted);font-size:13px;font-weight:600;">📆 Период:</span>
-                <button type="submit" name="period" value="all" class="period-btn {% if period_filter == 'all' %}period-btn-active{% endif %}">Все</button>
-                <button type="submit" name="period" value="week" class="period-btn {% if period_filter == 'week' %}period-btn-active{% endif %}">Неделя</button>
-                <button type="submit" name="period" value="month" class="period-btn {% if period_filter == 'month' %}period-btn-active{% endif %}">Месяц</button>
-            </form>
-        </div>
-
-        {% if conflict_error %}
-        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
-                    border-radius:10px;padding:14px 18px;margin-bottom:20px;
-                    color:#fca5a5;font-size:14px;font-weight:600;">
-            {{ conflict_error }}
-        </div>
-        {% endif %}
+    {% if conflict_error %}
+    <div class="conflict-error">{{ conflict_error }}</div>
     {% endif %}
+{% endif %}
 
-    <!-- ТАБЛИЦА (общая для обоих режимов) -->
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата и время</th>
-                    {% if user.role != 'student' %}<th>Направление</th>{% endif %}
-                    <th>
-                        {% if user.role == 'admin' %}Учитель / Ученик
-                        {% elif user.role == 'student' %}Учитель
-                        {% else %}Ученик{% endif %}
-                    </th>
-                    <th>Статус</th>
-                    {% if not is_archive %}<th>Связь</th>{% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for lesson in lessons %}
-                <tr class="{% if is_archive %}archive-row{% endif %}"
-                    data-color="{{ lesson.subject.color }}">
-                    <td>
-                        <div class="date-cell">
-                            <div class="day">{{ lesson.date_time|date:"l" }}</div>
-                            <div class="datetime">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
-                            {% if lesson.original_date_time %}
-                                <div class="rescheduled">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
+<!-- ТАБЛИЦА -->
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Дата и время</th>
+                {% if user.role != 'student' %}<th>Направление</th>{% endif %}
+                <th>
+                    {% if user.role == 'admin' %}Учитель / Ученик
+                    {% elif user.role == 'student' %}Учитель
+                    {% else %}Ученик{% endif %}
+                </th>
+                <th>Статус</th>
+                {% if not is_archive %}<th>Связь</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for lesson in lessons %}
+            <tr class="{% if is_archive %}archive-row{% endif %}" data-color="{{ lesson.subject.color }}">
+                <td>
+                    <div class="date-cell">
+                        <div class="day">{{ lesson.date_time|date:"l" }}</div>
+                        <div class="datetime">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
+                        {% if lesson.original_date_time %}
+                            <div class="rescheduled">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
+                        {% endif %}
+                    </div>
+                </td>
+                {% if user.role != 'student' %}
+                <td><span class="subject-pill">{{ lesson.subject.name }}</span></td>
+                {% endif %}
+                <td style="font-weight:600;">
+                    {% if user.role == 'student' %}
+                        {{ lesson.teacher.username }}
+                    {% elif user.role == 'admin' %}
+                        <div>👨‍🏫 {{ lesson.teacher.username }}</div>
+                        <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.username }}</div>
+                    {% else %}
+                        {{ lesson.student.username }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not is_archive and user.role in 'teacher admin' %}
+                        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
+                            <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
+                                <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
+                                <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
+                                <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
+                            </select>
+                            <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
+                                {% csrf_token %}
+                                <input type="datetime-local" name="new_date" required>
+                                <button type="submit" class="btn-reschedule">Перенести</button>
+                            </form>
+                            {% if user.role == 'admin' %}
+                                <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
                             {% endif %}
                         </div>
-                    </td>
-                    {% if user.role != 'student' %}
-                    <td><span class="subject-pill">{{ lesson.subject.name }}</span></td>
+                    {% else %}
+                        <span class="status-badge status-{{ lesson.status }}">
+                            {% if lesson.status == 'scheduled' %}⏳ Запланирован
+                            {% elif lesson.status == 'done' %}✅ Проведён
+                            {% else %}❌ Отменён{% endif %}
+                        </span>
                     {% endif %}
-                    <td style="font-weight:600;">
-                        {% if user.role == 'student' %}
-                            {{ lesson.teacher.username }}
-                        {% elif user.role == 'admin' %}
-                            <div>👨‍🏫 {{ lesson.teacher.username }}</div>
-                            <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.username }}</div>
-                        {% else %}
-                            {{ lesson.student.username }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if not is_archive and user.role in 'teacher admin' %}
-                            <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
-                                <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
-                                    <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
-                                    <option value="done" {% if lesson.status == 'done' %}selected{% endif %}>✅ Проведён</option>
-                                    <option value="canceled" {% if lesson.status == 'canceled' %}selected{% endif %}>❌ Отменён</option>
-                                </select>
-                                <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
-                                    {% csrf_token %}
-                                    <input type="datetime-local" name="new_date" required>
-                                    <button type="submit" class="btn-reschedule">Перенести</button>
-                                </form>
-                                {% if user.role == 'admin' %}
-                                    <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <span class="status-badge status-{{ lesson.status }}">
-                                {% if lesson.status == 'scheduled' %}⏳ Запланирован
-                                {% elif lesson.status == 'done' %}✅ Проведён
-                                {% else %}❌ Отменён{% endif %}
-                            </span>
-                        {% endif %}
-                    </td>
-                    {% if not is_archive %}
-                    <td>
-                        {% if user.role == 'student' %}
-                            <a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
-                        {% else %}
-                            <a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>
-                        {% endif %}
-                    </td>
+                </td>
+                {% if not is_archive %}
+                <td>
+                    {% if user.role == 'student' %}
+                        <a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
+                    {% else %}
+                        <a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>
                     {% endif %}
-                </tr>
-                {% empty %}
-                <tr class="empty-row">
-                    <td colspan="{% if is_archive %}{% if user.role == 'student' %}3{% else %}4{% endif %}{% else %}{% if user.role == 'student' %}4{% else %}5{% endif %}{% endif %}">
-                        {% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Форма добавления — только в режиме расписания -->
-    {% if not is_archive and user.role != 'student' %}
-    <div class="add-form-card">
-        <h3>➕ Добавить новое занятие</h3>
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-grid">
-                {% if user.role == 'admin' %}
-                <div class="form-group">
-                    <label>Учитель</label>
-                    <select name="teacher" required>
-                        <option value="">— Выберите —</option>
-                        {% for t in teachers %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
-                    </select>
-                </div>
+                </td>
                 {% endif %}
-                <div class="form-group">
-                    <label>Направление</label>
-                    <select name="subject" required>
-                        <option value="">— Выберите —</option>
-                        {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ученик</label>
-                    <select name="student" required>
-                        <option value="">— Выберите —</option>
-                        {% for u in students %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Дата и время</label>
-                    <input type="datetime-local" id="lesson_date_time" name="date_time" required>
-                </div>
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="repeat"> Повторить на месяц (4 занятия)
-                    </label>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn-create">✓ Создать занятие</button>
-                </div>
-            </div>
-        </form>
-    </div>
-    {% endif %}
-</main>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="{% if is_archive %}{% if user.role == 'student' %}3{% else %}4{% endif %}{% else %}{% if user.role == 'student' %}4{% else %}5{% endif %}{% endif %}">
+                    {% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
+<!-- Форма добавления — только в режиме расписания -->
+{% if not is_archive and user.role != 'student' %}
+<div class="add-form-card">
+    <h3>➕ Добавить новое занятие</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-grid">
+            {% if user.role == 'admin' %}
+            <div class="form-group">
+                <label>Учитель</label>
+                <select name="teacher" required>
+                    <option value="">— Выберите —</option>
+                    {% for t in teachers %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <label>Направление</label>
+                <select name="subject" required>
+                    <option value="">— Выберите —</option>
+                    {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ученик</label>
+                <select name="student" required>
+                    <option value="">— Выберите —</option>
+                    {% for u in students %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Дата и время</label>
+                <input type="datetime-local" id="lesson_date_time" name="date_time" required>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="repeat"> Повторить на месяц (4 занятия)
+                </label>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn-create">✓ Создать занятие</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
 <script>
+    // Цветовые метки строк и пилюль по цвету направления
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('tr[data-color]').forEach(row => {
             const color = row.dataset.color;
+            if (!color) return;
             row.style.setProperty('--row-color', color);
             row.classList.add('row-colored');
             const pill = row.querySelector('.subject-pill');
@@ -594,15 +491,15 @@
         finally { btn.disabled = false; }
     }
 
-    window.onload = function() {
-        let now = new Date();
+    // Дефолтная дата — завтра 16:00
+    window.addEventListener('load', () => {
+        const inp = document.getElementById('lesson_date_time');
+        if (!inp) return;
+        const now = new Date();
         now.setDate(now.getDate() + 1);
         now.setHours(16, 0, 0, 0);
-        let pad = n => String(n).padStart(2, '0');
-        let val = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
-        let inp = document.getElementById('lesson_date_time');
-        if (inp) inp.value = val;
-    }
+        const pad = n => String(n).padStart(2, '0');
+        inp.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T16:00`;
+    });
 </script>
-</body>
-</html>
+{% endblock %}

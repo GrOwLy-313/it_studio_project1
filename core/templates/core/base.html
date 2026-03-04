@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ITишник{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'core/css/main.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-logo">
+        <div class="badge">⚡ ITишник</div>
+    </div>
+    <div class="sidebar-user">
+        <div class="name">{{ user.username }}</div>
+        <div class="role">{{ user.get_role_display }}</div>
+    </div>
+
+    {% if user.role == 'admin' %}
+        <a href="{% url 'dashboard' %}" class="nav-item {% block nav_dashboard %}{% endblock %}">
+            <span class="icon">🏠</span> Дашборд
+        </a>
+    {% endif %}
+    <a href="{% url 'calendar' %}" class="nav-item {% block nav_calendar %}{% endblock %}">
+        <span class="icon">📅</span> Расписание
+    </a>
+    <a href="{% url 'messages_list' %}" class="nav-item {% block nav_messages %}{% endblock %}">
+        <span class="icon">💬</span> Сообщения
+        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'notifications' %}" class="nav-item {% block nav_notifications %}{% endblock %}">
+        <span class="icon">🔔</span> Уведомления
+        {% if notif_count > 0 %}<span class="nav-badge">{{ notif_count }}</span>{% endif %}
+    </a>
+    {% if user.role != 'student' %}
+        <a href="{% url 'profile' %}" class="nav-item {% block nav_profile %}{% endblock %}">
+            <span class="icon">👤</span> Личный кабинет
+        </a>
+        <a href="{% url 'materials' %}" class="nav-item {% block nav_materials %}{% endblock %}">
+            <span class="icon">📚</span> Материалы
+        </a>
+    {% endif %}
+    <a href="{% url 'homework' %}" class="nav-item {% block nav_homework %}{% endblock %}">
+        <span class="icon">📝</span> Домашние задания
+    </a>
+    {% if user.role == 'admin' %}
+        <a href="{% url 'reports_page' %}" class="nav-item {% block nav_reports %}{% endblock %}">
+            <span class="icon">📊</span> Отчёты
+        </a>
+        <a href="{% url 'admin_panel' %}" class="nav-item {% block nav_admin %}{% endblock %}">
+            <span class="icon">⚙️</span> Управление
+        </a>
+    {% endif %}
+
+    <!-- ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ -->
+    <div class="theme-toggle">
+        <span id="theme-label">🌙 Тёмная тема</span>
+        <label class="toggle-switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="toggle-slider"></span>
+        </label>
+    </div>
+
+    <div class="sidebar-bottom">
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn-logout">→ Выйти из системы</button>
+        </form>
+    </div>
+</nav>
+
+<main class="main">
+    {% block content %}{% endblock %}
+</main>
+
+{% block extra_js %}{% endblock %}
+
+<script>
+    // Тема — читаем из localStorage, применяем сразу
+    const html = document.documentElement;
+    const toggle = document.getElementById('themeToggle');
+    const label = document.getElementById('theme-label');
+
+    function applyTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        toggle.checked = (theme === 'light');
+        label.textContent = theme === 'light' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+        localStorage.setItem('theme', theme);
+    }
+
+    // Применяем сохранённую тему при загрузке
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(savedTheme);
+
+    // Переключение
+    toggle.addEventListener('change', () => {
+        applyTheme(toggle.checked ? 'light' : 'dark');
+    });
+</script>
+
+</body>
+</html>

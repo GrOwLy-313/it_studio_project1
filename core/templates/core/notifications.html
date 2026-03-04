@@ -1,107 +1,69 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Уведомления — ITишник</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--accent:#3b82f6;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;}
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-        .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:24px 0;}
-        .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-        .sidebar-logo .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:8px 16px;border-radius:50px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:white;}
-        .sidebar-user{padding:12px 20px;margin-bottom:8px;}
-        .sidebar-user .name{font-weight:700;font-size:14px;}
-        .sidebar-user .role{font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all 0.15s;border-left:3px solid transparent;margin:2px 0;}
-        .nav-item:hover{color:var(--text);background:var(--surface2);}
-        .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(59,130,246,0.08);}
-        .nav-item .icon{font-size:18px;width:22px;text-align:center;}
-        .nav-badge{margin-left:auto;background:var(--red);color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
-        .sidebar-bottom{margin-top:auto;padding:0 20px;border-top:1px solid var(--border);padding-top:16px;}
-        .btn-logout{width:100%;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-        .btn-logout:hover{background:rgba(239,68,68,0.2);}
+{% extends 'core/base.html' %}
+{% load static %}
 
-        .main{margin-left:240px;padding:32px;}
-        .page-header{margin-bottom:28px;}
-        .page-header h1{font-size:26px;font-weight:800;}
-        .page-header p{color:var(--muted);font-size:14px;margin-top:4px;}
+{% block title %}Уведомления — ITишник{% endblock %}
+{% block nav_notifications %}active{% endblock %}
 
-        .notif-list{display:flex;flex-direction:column;gap:12px;max-width:700px;}
-        .notif-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start;transition:border-color 0.2s;}
-        .notif-card.unread{border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.04);}
-        .notif-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
-        .notif-body{flex:1;}
-        .notif-text{font-size:14px;line-height:1.6;color:var(--text);}
-        .notif-time{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace;}
-        .unread-dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:6px;box-shadow:0 0 6px var(--yellow);}
-        .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
-        .empty-state .big{font-size:48px;margin-bottom:12px;}
-    </style>
-</head>
-<body>
-<nav class="sidebar">
-    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
-    <div class="sidebar-user">
-        <div class="name">{{ user.username }}</div>
-        <div class="role">{{ user.get_role_display }}</div>
-    </div>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
-    {% endif %}
-    <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
-    <a href="{% url 'messages_list' %}" class="nav-item">
-        <span class="icon">💬</span> Сообщения
-        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'notifications' %}" class="nav-item active">
-        <span class="icon">🔔</span> Уведомления
-    </a>
-    {% if user.role != 'student' %}
-        <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
-        <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
-    {% endif %}
-    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
-        <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
-    {% endif %}
-    <div class="sidebar-bottom">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn-logout">→ Выйти из системы</button>
-        </form>
-    </div>
-</nav>
+{% block extra_css %}
+<style>
+    .notif-list { display: flex; flex-direction: column; gap: 12px; max-width: 700px; }
 
-<main class="main">
-    <div class="page-header">
-        <h1>🔔 Уведомления</h1>
-        <p>Все события связанные с вашими занятиями</p>
-    </div>
+    .notif-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 18px 20px;
+        display: flex; gap: 16px; align-items: flex-start;
+        transition: border-color 0.2s, background 0.3s;
+    }
+    .notif-card.unread {
+        border-color: rgba(245,158,11,0.4);
+        background: rgba(245,158,11,0.04);
+    }
 
-    {% if notifications %}
-    <div class="notif-list">
-        {% for n in notifications %}
-        <div class="notif-card {% if not n.is_read %}unread{% endif %}">
-            <div class="notif-icon">📅</div>
-            <div class="notif-body">
-                <div class="notif-text">{{ n.text }}</div>
-                <div class="notif-time">{{ n.created_at|date:"d.m.Y · H:i" }}</div>
-            </div>
-            {% if not n.is_read %}
-                <div class="unread-dot"></div>
-            {% endif %}
+    .notif-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+
+    .notif-body { flex: 1; }
+    .notif-text { font-size: 14px; line-height: 1.6; color: var(--text); }
+    .notif-time {
+        font-size: 11px; color: var(--muted); margin-top: 6px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .unread-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--yellow); flex-shrink: 0; margin-top: 6px;
+        box-shadow: 0 0 6px var(--yellow);
+    }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔔 Уведомления</h1>
+    <p>Все события связанные с вашими занятиями</p>
+</div>
+
+{% if notifications %}
+<div class="notif-list">
+    {% for n in notifications %}
+    <div class="notif-card {% if not n.is_read %}unread{% endif %}">
+        <div class="notif-icon">📅</div>
+        <div class="notif-body">
+            <div class="notif-text">{{ n.text }}</div>
+            <div class="notif-time">{{ n.created_at|date:"d.m.Y · H:i" }}</div>
         </div>
-        {% endfor %}
+        {% if not n.is_read %}
+            <div class="unread-dot"></div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="big">🔔</div>
-        <p>Уведомлений пока нет</p>
-    </div>
-    {% endif %}
-</main>
-</body>
-</html>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="big">🔔</div>
+    <p>Уведомлений пока нет</p>
+</div>
+{% endif %}
+{% endblock %}

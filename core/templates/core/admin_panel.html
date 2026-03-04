@@ -1,305 +1,245 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Управление — ITишник</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--accent:#3b82f6;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;}
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-        .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:24px 0;}
-        .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-        .sidebar-logo .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:8px 16px;border-radius:50px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:white;}
-        .sidebar-user{padding:12px 20px;margin-bottom:8px;}
-        .sidebar-user .name{font-weight:700;font-size:14px;}
-        .sidebar-user .role{font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all 0.15s;border-left:3px solid transparent;margin:2px 0;}
-        .nav-item:hover{color:var(--text);background:var(--surface2);}
-        .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(59,130,246,0.08);}
-        .nav-item .icon{font-size:18px;width:22px;text-align:center;}
-        .sidebar-bottom{margin-top:auto;padding:0 20px;border-top:1px solid var(--border);padding-top:16px;}
-        .btn-logout{width:100%;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-        .btn-logout:hover{background:rgba(239,68,68,0.2);}
-        .main{margin-left:240px;padding:32px;}
-        .page-header{margin-bottom:28px;}
-        .page-header h1{font-size:26px;font-weight:800;}
-        .page-header p{color:var(--muted);font-size:14px;margin-top:4px;}
+{% extends 'core/base.html' %}
+{% load static %}
 
-        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
-        .full{grid-column:1/-1;}
-        .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;}
-        .card h2{font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+{% block title %}Управление — ITишник{% endblock %}
+{% block nav_admin %}active{% endblock %}
 
-        .form-group{margin-bottom:14px;}
-        .form-group label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;}
-        .form-group input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;}
-        .form-group input:focus{border-color:var(--accent);}
-        .form-group input::placeholder{color:var(--muted);}
+{% block extra_css %}
+<style>
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .full { grid-column: 1/-1; }
 
-        .btn-green{padding:10px 20px;background:linear-gradient(135deg,var(--green),#059669);border:none;border-radius:10px;color:white;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;width:100%;}
-        .btn-green:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,0.3);}
-        .btn-blue{padding:10px 20px;background:linear-gradient(135deg,var(--accent),#2563eb);border:none;border-radius:10px;color:white;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;width:100%;}
-        .btn-blue:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,0.3);}
+    .card { padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 15px; font-weight: 700; color: var(--accent2); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 
-        .list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
-        .list-item:last-child{border-bottom:none;}
-        .list-item .item-name{font-size:14px;font-weight:600;}
-        .list-item .item-sub{font-size:12px;color:var(--muted);margin-top:2px;}
-        .btn-del{padding:5px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#fca5a5;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-        .btn-del:hover{background:rgba(239,68,68,0.2);}
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+    .form-group input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 14px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-group input::placeholder { color: var(--muted); }
 
-        /* price edit inline */
-        .price-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
-        .price-row:last-child{border-bottom:none;}
-        .price-info .p-name{font-size:14px;font-weight:600;}
-        .price-info .p-tags{margin-top:4px;display:flex;gap:6px;}
-        .tag-universal{background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;}
-        .tag-price{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);color:var(--green);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;}
-        .price-actions{display:flex;gap:6px;align-items:center;}
-        .price-actions input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;font-family:'JetBrains Mono',monospace;outline:none;width:100px;}
-        .btn-price{padding:6px 12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:6px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-        .btn-price:hover{background:rgba(59,130,246,0.2);}
+    .btn-green { padding: 10px 20px; background: linear-gradient(135deg, var(--green), #059669); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; }
+    .btn-green:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
+    .btn-blue { padding: 10px 20px; background: linear-gradient(135deg, var(--accent), #2563eb); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; }
+    .btn-blue:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.3); }
 
-        /* assign students */
-        .assign-form{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:20px;}
-        .assign-form select{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;min-width:180px;}
-        .checkboxes{display:flex;flex-direction:column;gap:8px;}
-        .checkbox-item{display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:13px;font-weight:600;cursor:pointer;}
-        .checkbox-item input{accent-color:var(--accent);width:16px;height:16px;}
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .list-item:last-child { border-bottom: none; }
+    .list-item .item-name { font-size: 14px; font-weight: 600; }
+    .list-item .item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .btn-del { padding: 5px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-del:hover { background: rgba(239,68,68,0.2); }
 
-        /* rates table */
-        .rates-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
-        .rates-form select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-family:'Manrope',sans-serif;font-size:13px;outline:none;flex:1;min-width:140px;}
-        .rates-form input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;width:120px;}
-        .btn-set{padding:9px 18px;background:linear-gradient(135deg,var(--accent),#2563eb);border:none;border-radius:8px;color:white;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+    .price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .price-row:last-child { border-bottom: none; }
+    .price-info .p-name { font-size: 14px; font-weight: 600; }
+    .price-info .p-tags { margin-top: 4px; display: flex; gap: 6px; }
+    .tag-universal { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25); color: var(--accent2); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .tag-price { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .price-actions { display: flex; gap: 6px; align-items: center; }
+    .price-actions input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none; width: 100px; }
+    .btn-price { padding: 6px 12px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn-price:hover { background: rgba(59,130,246,0.2); }
 
-        table.rates-table{width:100%;border-collapse:collapse;}
-        table.rates-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
-        table.rates-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border);}
-        table.rates-table tr:last-child td{border-bottom:none;}
+    .assign-form { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 20px; }
+    .assign-form select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 14px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; min-width: 180px; }
+    .checkboxes { display: flex; flex-direction: column; gap: 8px; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; color: var(--muted2); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .checkbox-item input { accent-color: var(--accent); width: 16px; height: 16px; }
 
-        .assign-table{width:100%;border-collapse:collapse;}
-        .assign-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
-        .assign-table td{padding:11px 14px;font-size:14px;border-bottom:1px solid var(--border);}
-        .assign-table tr:last-child td{border-bottom:none;}
-    </style>
-</head>
-<body>
-<nav class="sidebar">
-    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
-    <div class="sidebar-user">
-        <div class="name">{{ user.username }}</div>
-        <div class="role">{{ user.get_role_display }}</div>
-    </div>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
-    {% endif %}
-    <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
-    <a href="{% url 'messages_list' %}" class="nav-item"><span class="icon">💬</span> Сообщения</a>
-    <a href="{% url 'notifications' %}" class="nav-item">
-        <span class="icon">🔔</span> Уведомления
-        {% if notif_count > 0 %}
-            <span class="nav-badge">{{ notif_count }}</span>
-        {% endif %}
-    </a>
-    <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
-    <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
-    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
-    <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
-    <a href="{% url 'admin_panel' %}" class="nav-item active"><span class="icon">⚙️</span> Управление</a>
-    <div class="sidebar-bottom">
-        <form action="{% url 'logout' %}" method="post">
+    .rates-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .rates-form select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-family: 'Manrope', sans-serif; font-size: 13px; outline: none; flex: 1; min-width: 140px; }
+    .rates-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; width: 120px; }
+    .btn-set { padding: 9px 18px; background: linear-gradient(135deg, var(--accent), #2563eb); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+    .assign-table { width: 100%; border-collapse: collapse; }
+    .assign-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .assign-table td { padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    .assign-table tr:last-child td { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>⚙️ Управление студией</h1>
+    <p>Пользователи, направления, ставки и назначения</p>
+</div>
+
+<div class="grid-2">
+
+    <!-- УЧИТЕЛЯ -->
+    <div class="card">
+        <h2>👨‍🏫 Учителя</h2>
+        <form method="post">
             {% csrf_token %}
-            <button type="submit" class="btn-logout">→ Выйти из системы</button>
+            <div class="form-group"><label>Логин</label><input type="text" name="teacher_username" placeholder="Логин учителя" required></div>
+            <div class="form-group"><label>ФИО</label><input type="text" name="teacher_fullname" placeholder="Необязательно"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" name="teacher_password" placeholder="Пароль" required></div>
+            <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
+        </form>
+        <div style="margin-top:20px;">
+            {% for t in teachers %}
+            <div class="list-item">
+                <div>
+                    <div class="item-name">{{ t.username }}</div>
+                    {% if t.first_name %}<div class="item-sub">{{ t.first_name }}</div>{% endif %}
+                </div>
+                <form method="post" onsubmit="return confirm('Удалить учителя?')">
+                    {% csrf_token %}<input type="hidden" name="user_id" value="{{ t.id }}">
+                    <button type="submit" name="delete_user" class="btn-del">Удалить</button>
+                </form>
+            </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учителей пока нет</p>{% endfor %}
+        </div>
+    </div>
+
+    <!-- УЧЕНИКИ -->
+    <div class="card">
+        <h2>🎓 Ученики</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group"><label>Логин / ФИО</label><input type="text" name="username" placeholder="ФИО ученика" required></div>
+            <div class="form-group"><label>Пароль</label><input type="password" name="password" placeholder="Пароль" required></div>
+            <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
+        </form>
+        <div style="margin-top:20px;">
+            {% for s in students %}
+            <div class="list-item">
+                <div class="item-name">{{ s.username }}</div>
+                <form method="post" onsubmit="return confirm('Удалить ученика?')">
+                    {% csrf_token %}<input type="hidden" name="user_id" value="{{ s.id }}">
+                    <button type="submit" name="delete_user" class="btn-del">Удалить</button>
+                </form>
+            </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учеников пока нет</p>{% endfor %}
+        </div>
+    </div>
+
+    <!-- НАПРАВЛЕНИЯ -->
+    <div class="card">
+        <h2>📖 Направления</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group"><label>Название курса</label><input type="text" name="name" placeholder="Например: Python, Робототехника" required></div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" name="is_universal" style="accent-color:var(--accent);width:auto;">
+                    Доступно всем учителям (пробное занятие)
+                </label>
+            </div>
+            <button type="submit" name="create_subject" class="btn-blue">+ Добавить направление</button>
+        </form>
+        <div style="margin-top:20px;">
+            {% for sub in subjects %}
+            <div class="price-row">
+                <div class="price-info">
+                    <div class="p-name">{{ sub.name }}</div>
+                    <div class="p-tags">
+                        {% if sub.is_universal %}<span class="tag-universal">🌐 Для всех</span>{% endif %}
+                        <span class="tag-price">{{ sub.price_per_lesson }} ₽</span>
+                    </div>
+                </div>
+                <div class="price-actions">
+                    <form method="post" style="display:flex;gap:6px;align-items:center;">
+                        {% csrf_token %}
+                        <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                        <input type="color" name="new_color" value="{{ sub.color }}"
+                            style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
+                        <button type="submit" name="update_color" class="btn-price">Цвет</button>
+                    </form>
+                    <form method="post" style="display:flex;gap:6px;align-items:center;">
+                        {% csrf_token %}
+                        <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                        <input type="number" name="new_price" value="{{ sub.price_per_lesson }}">
+                        <button type="submit" name="update_price" class="btn-price">Изменить</button>
+                    </form>
+                    <form method="post" onsubmit="return confirm('Удалить направление?')">
+                        {% csrf_token %}<input type="hidden" name="subject_id" value="{{ sub.id }}">
+                        <button type="submit" name="delete_subject" class="btn-del">✕</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Направлений пока нет</p>{% endfor %}
+        </div>
+    </div>
+
+    <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
+    <div class="card">
+        <h2>🔗 Назначить ученика учителям</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="assign-form">
+                <div>
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
+                    <select name="student_id" required>
+                        <option value="">— Выберите ученика —</option>
+                        {% for s in students %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Учителя</div>
+                    <div class="checkboxes">
+                        {% for t in teachers %}
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
+                            {{ t.username }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <button type="submit" name="assign_student" class="btn-green" style="width:auto;padding:10px 24px;">💾 Сохранить назначения</button>
+        </form>
+        <div style="margin-top:20px;">
+            <table class="assign-table">
+                <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
+                <tbody>
+                    {% for ts in teacher_students %}
+                    <tr>
+                        <td style="font-weight:600;">{{ ts.student.username }}</td>
+                        <td style="color:var(--muted2);">{{ ts.teacher.username }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- СТАВКИ -->
+<div class="card full">
+    <h2>💰 Индивидуальные ставки учителей</h2>
+    <div class="rates-form">
+        <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+            {% csrf_token %}
+            <select name="teacher_id" required>
+                <option value="">— Учитель —</option>
+                {% for t in teachers %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
+            </select>
+            <select name="subject_id" required>
+                <option value="">— Предмет —</option>
+                {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+            <input type="number" name="rate" placeholder="Ставка ₽">
+            <button type="submit" name="set_rate" class="btn-set">Назначить ставку</button>
         </form>
     </div>
-</nav>
-
-<main class="main">
-    <div class="page-header">
-        <h1>⚙️ Управление студией</h1>
-        <p>Пользователи, направления, ставки и назначения</p>
-    </div>
-
-    <div class="grid-2">
-
-        <!-- УЧИТЕЛЯ -->
-        <div class="card">
-            <h2>👨‍🏫 Учителя</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group"><label>Логин</label><input type="text" name="teacher_username" placeholder="Логин учителя" required></div>
-                <div class="form-group"><label>ФИО</label><input type="text" name="teacher_fullname" placeholder="Необязательно"></div>
-                <div class="form-group"><label>Пароль</label><input type="password" name="teacher_password" placeholder="Пароль" required></div>
-                <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
-            </form>
-            <div style="margin-top:20px;">
-                {% for t in teachers %}
-                <div class="list-item">
-                    <div>
-                        <div class="item-name">{{ t.username }}</div>
-                        {% if t.first_name %}<div class="item-sub">{{ t.first_name }}</div>{% endif %}
-                    </div>
-                    <form method="post" onsubmit="return confirm('Удалить учителя?')">
-                        {% csrf_token %}<input type="hidden" name="user_id" value="{{ t.id }}">
-                        <button type="submit" name="delete_user" class="btn-del">Удалить</button>
-                    </form>
-                </div>
-                {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учителей пока нет</p>{% endfor %}
-            </div>
-        </div>
-
-        <!-- УЧЕНИКИ -->
-        <div class="card">
-            <h2>🎓 Ученики</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group"><label>Логин / ФИО</label><input type="text" name="username" placeholder="ФИО ученика" required></div>
-                <div class="form-group"><label>Пароль</label><input type="password" name="password" placeholder="Пароль" required></div>
-                <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
-            </form>
-            <div style="margin-top:20px;">
-                {% for s in students %}
-                <div class="list-item">
-                    <div class="item-name">{{ s.username }}</div>
-                    <form method="post" onsubmit="return confirm('Удалить ученика?')">
-                        {% csrf_token %}<input type="hidden" name="user_id" value="{{ s.id }}">
-                        <button type="submit" name="delete_user" class="btn-del">Удалить</button>
-                    </form>
-                </div>
-                {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учеников пока нет</p>{% endfor %}
-            </div>
-        </div>
-
-        <!-- НАПРАВЛЕНИЯ -->
-        <div class="card">
-            <h2>📖 Направления</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group"><label>Название курса</label><input type="text" name="name" placeholder="Например: Python, Робототехника" required></div>
-                <div class="form-group">
-                    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;">
-                        <input type="checkbox" name="is_universal" style="accent-color:var(--accent);width:auto;">
-                        Доступно всем учителям (пробное занятие)
-                    </label>
-                </div>
-                <button type="submit" name="create_subject" class="btn-blue">+ Добавить направление</button>
-            </form>
-            <div style="margin-top:20px;">
-                {% for sub in subjects %}
-                <div class="price-row">
-                    <div class="price-info">
-                        <div class="p-name">{{ sub.name }}</div>
-                        <div class="p-tags">
-                            {% if sub.is_universal %}<span class="tag-universal">🌐 Для всех</span>{% endif %}
-                            <span class="tag-price">{{ sub.price_per_lesson }} ₽</span>
-                        </div>
-                    </div>
-                    <div class="price-actions">
-                        <form method="post" style="display:flex;gap:6px;align-items:center;">
-                            {% csrf_token %}
-                            <input type="hidden" name="subject_id" value="{{ sub.id }}">
-                            <input type="color" name="new_color" value="{{ sub.color }}"
-                                style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
-                            <button type="submit" name="update_color" class="btn-price">Цвет</button>
-                        </form>
-                        <form method="post" style="display:flex;gap:6px;align-items:center;">
-                            {% csrf_token %}
-                            <input type="hidden" name="subject_id" value="{{ sub.id }}">
-                            <input type="number" name="new_price" value="{{ sub.price_per_lesson }}">
-                            <button type="submit" name="update_price" class="btn-price">Изменить</button>
-                        </form>
-                        <form method="post" onsubmit="return confirm('Удалить направление?')">
-                            {% csrf_token %}<input type="hidden" name="subject_id" value="{{ sub.id }}">
-                            <button type="submit" name="delete_subject" class="btn-del">✕</button>
-                        </form>
-                    </div>
-                </div>
-                {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Направлений пока нет</p>{% endfor %}
-            </div>
-        </div>
-
-        <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
-        <div class="card">
-            <h2>🔗 Назначить ученика учителям</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="assign-form">
-                    <div>
-                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
-                        <select name="student_id" required>
-                            <option value="">— Выберите ученика —</option>
-                            {% for s in students %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Учителя</div>
-                        <div class="checkboxes">
-                            {% for t in teachers %}
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
-                                {{ t.username }}
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                <button type="submit" name="assign_student" class="btn-green" style="width:auto;padding:10px 24px;">💾 Сохранить назначения</button>
-            </form>
-            <div style="margin-top:20px;">
-                <table class="assign-table">
-                    <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
-                    <tbody>
-                        {% for ts in teacher_students %}
-                        <tr>
-                            <td style="font-weight:600;">{{ ts.student.username }}</td>
-                            <td style="color:var(--muted2);">{{ ts.teacher.username }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- СТАВКИ -->
-    <div class="card full">
-        <h2>💰 Индивидуальные ставки учителей</h2>
-        <div class="rates-form">
-            <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
-                {% csrf_token %}
-                <select name="teacher_id" required>
-                    <option value="">— Учитель —</option>
-                    {% for t in teachers %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
-                </select>
-                <select name="subject_id" required>
-                    <option value="">— Предмет —</option>
-                    {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                </select>
-                <input type="number" name="rate" placeholder="Ставка ₽">
-                <button type="submit" name="set_rate" class="btn-set">Назначить ставку</button>
-            </form>
-        </div>
-        <table class="rates-table">
-            <thead><tr><th>Учитель</th><th>Предмет</th><th>Ставка за урок</th></tr></thead>
-            <tbody>
-                {% for r in rates %}
-                <tr>
-                    <td style="font-weight:600;">{{ r.teacher.username }}</td>
-                    <td>{{ r.subject.name }}</td>
-                    <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-</main>
-</body>
-</html>
+    <table>
+        <thead><tr><th>Учитель</th><th>Предмет</th><th>Ставка за урок</th></tr></thead>
+        <tbody>
+            {% for r in rates %}
+            <tr>
+                <td style="font-weight:600;">{{ r.teacher.username }}</td>
+                <td>{{ r.subject.name }}</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

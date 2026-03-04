@@ -863,6 +863,10 @@ def mark_homework_done(request, hw_id):
 @user_passes_test(is_teacher_or_admin)
 def check_homework(request, hw_id):
     hw = get_object_or_404(Homework, id=hw_id)
+    
+    if request.user.role == 'teacher' and hw.teacher != request.user:
+        raise PermissionDenied
+    
     if request.method == 'POST':
         comment = request.POST.get('comment', '')
         hw.status = 'checked'
@@ -880,6 +884,8 @@ def check_homework(request, hw_id):
 @user_passes_test(is_teacher_or_admin)
 def delete_homework(request, hw_id):
     hw = get_object_or_404(Homework, id=hw_id)
+    if request.user.role == 'teacher' and hw.teacher != request.user:
+        raise PermissionDenied
     hw.delete()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'status': 'ok'})
@@ -948,6 +954,8 @@ def chat_send(request, user_id):
 
 @login_required
 def archive_view(request):
+    if request.user.role == 'student':
+        return redirect('calendar')
     archive_date = timezone.now() - timedelta(days=3)
 
     if request.user.role == 'student':

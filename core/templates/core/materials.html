@@ -1,156 +1,157 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Материалы — ITишник</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--accent:#3b82f6;--accent2:#06b6d4;--green:#10b981;--text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;--red:#ef4444;}
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-        .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:24px 0;}
-        .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-        .sidebar-logo .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:8px 16px;border-radius:50px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:white;}
-        .sidebar-user{padding:12px 20px;margin-bottom:8px;}
-        .sidebar-user .name{font-weight:700;font-size:14px;}
-        .sidebar-user .role{font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all 0.15s;border-left:3px solid transparent;margin:2px 0;}
-        .nav-item:hover{color:var(--text);background:var(--surface2);}
-        .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(59,130,246,0.08);}
-        .nav-item .icon{font-size:18px;width:22px;text-align:center;}
-        .nav-badge{margin-left:auto;background:var(--red);color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
-        .sidebar-bottom{margin-top:auto;padding:0 20px;border-top:1px solid var(--border);padding-top:16px;}
-        .btn-logout{width:100%;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-        .btn-logout:hover{background:rgba(239,68,68,0.2);}
-        .main{margin-left:240px;padding:32px;}
-        .page-header{margin-bottom:28px;}
-        .page-header h1{font-size:26px;font-weight:800;}
-        .page-header p{color:var(--muted);font-size:14px;margin-top:4px;}
+{% extends 'core/base.html' %}
+{% load static %}
 
-        .add-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;}
-        .add-card h2{font-size:15px;font-weight:700;margin-bottom:18px;color:var(--accent2);}
-        .form-group{margin-bottom:16px;}
-        .form-group label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;}
-        .form-group input[type="text"],
-        .form-group textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;resize:vertical;}
-        .form-group input[type="text"]:focus,
-        .form-group textarea:focus{border-color:var(--accent);}
-        .form-group input[type="text"]::placeholder,
-        .form-group textarea::placeholder{color:var(--muted);}
-        .form-group input[type="file"]{width:100%;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--muted2);padding:12px 14px;font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:border-color 0.2s;}
-        .form-group input[type="file"]:hover{border-color:var(--accent);}
-        .btn-publish{padding:12px 24px;background:linear-gradient(135deg,var(--green),#059669);border:none;border-radius:10px;color:white;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;}
-        .btn-publish:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,0.35);}
+{% block title %}Материалы — ITишник{% endblock %}
+{% block nav_materials %}active{% endblock %}
 
-        .materials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
-        .material-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.2s,transform 0.2s;}
-        .material-card:hover{border-color:var(--accent);transform:translateY(-2px);}
-        .material-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
-        .material-card .m-title{font-size:15px;font-weight:700;margin-bottom:10px;line-height:1.4;}
-        .material-card .m-content{font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:14px;word-break:break-word;}
-        .material-card .m-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
-        .material-card .m-author{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
-        .author-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
-        .material-card .m-date{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
-        .file-link{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;margin-bottom:12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:8px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;transition:all 0.2s;word-break:break-all;}
-        .file-link:hover{background:rgba(59,130,246,0.2);}
-        .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
-        .empty-state .big{font-size:48px;margin-bottom:12px;}
-    </style>
-</head>
-<body>
-<nav class="sidebar">
-    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
-    <div class="sidebar-user">
-        <div class="name">{{ user.username }}</div>
-        <div class="role">{{ user.get_role_display }}</div>
-    </div>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
-    {% endif %}
-    <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
-    <a href="{% url 'messages_list' %}" class="nav-item">
-        <span class="icon">💬</span> Сообщения
-        {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'notifications' %}" class="nav-item">
-        <span class="icon">🔔</span> Уведомления
-        {% if notif_count > 0 %}<span class="nav-badge">{{ notif_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
-    <a href="{% url 'materials' %}" class="nav-item active"><span class="icon">📚</span> Материалы</a>
-    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'reports_page' %}" class="nav-item"><span class="icon">📊</span> Отчёты</a>
-        <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
-    {% endif %}
-    <div class="sidebar-bottom">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn-logout">→ Выйти из системы</button>
-        </form>
-    </div>
-</nav>
+{% block extra_css %}
+<style>
+    /* ADD FORM */
+    .add-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 24px; margin-bottom: 28px;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .add-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 18px; color: var(--accent2); }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+        display: block; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px;
+        color: var(--muted); margin-bottom: 6px;
+    }
+    .form-group input[type="text"],
+    .form-group textarea {
+        width: 100%; background: var(--surface2);
+        border: 1.5px solid var(--border); border-radius: 10px;
+        color: var(--text); padding: 12px 14px;
+        font-family: 'Manrope', sans-serif; font-size: 14px;
+        outline: none; transition: border-color 0.2s, background 0.3s;
+        resize: vertical;
+    }
+    .form-group input[type="text"]:focus,
+    .form-group textarea:focus { border-color: var(--accent); }
+    .form-group input[type="text"]::placeholder,
+    .form-group textarea::placeholder { color: var(--muted); }
+    .form-group input[type="file"] {
+        width: 100%; background: var(--surface2);
+        border: 1.5px dashed var(--border); border-radius: 10px;
+        color: var(--muted2); padding: 12px 14px;
+        font-family: 'Manrope', sans-serif; font-size: 13px;
+        cursor: pointer; transition: border-color 0.2s, background 0.3s;
+    }
+    .form-group input[type="file"]:hover { border-color: var(--accent); }
 
-<main class="main">
-    <div class="page-header">
-        <h1>📚 База учебных материалов</h1>
-        <p>Общая база знаний для всех учителей студии</p>
-    </div>
+    .btn-publish {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, var(--green), #059669);
+        border: none; border-radius: 10px; color: white;
+        font-family: 'Manrope', sans-serif; font-size: 14px;
+        font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-publish:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
 
-    <div class="add-card">
-        <h2>+ Добавить новый материал</h2>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="form-group">
-                <label>Название</label>
-                <input type="text" name="title" placeholder="Например: Курс Python с нуля" required>
-            </div>
-            <div class="form-group">
-                <label>Описание или ссылка</label>
-                <textarea name="content" rows="3" placeholder="Ссылка на материал, описание, заметки..." required></textarea>
-            </div>
-            <div class="form-group">
-                <label>Файл (необязательно) — PDF, Word, изображение</label>
-                <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg">
-            </div>
-            <button type="submit" class="btn-publish">📤 Опубликовать</button>
-        </form>
-    </div>
+    /* MATERIALS GRID */
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+    }
+    .material-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 20px;
+        position: relative; overflow: hidden;
+        transition: border-color 0.2s, transform 0.2s, background 0.3s;
+    }
+    .material-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .material-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .material-card .m-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; line-height: 1.4; }
+    .material-card .m-content { font-size: 13px; color: var(--muted2); line-height: 1.6; margin-bottom: 14px; word-break: break-word; }
+    .material-card .m-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .material-card .m-author { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 
-    {% if materials %}
-    <div class="materials-grid">
-        {% for m in materials %}
-        <div class="material-card">
-            <div class="m-title">{{ m.title }}</div>
-            <div class="m-content">{{ m.content|linebreaks }}</div>
-            {% if m.file %}
-                <a href="{{ m.file.url }}" target="_blank" class="file-link">
-                    {% with m.file.name|lower as fname %}
-                        {% if '.pdf' in fname %}📄
-                        {% elif '.doc' in fname %}📝
-                        {% elif '.jpg' in fname or '.png' in fname or '.jpeg' in fname %}🖼
-                        {% else %}📎{% endif %}
-                    {% endwith %}
-                    {{ m.file.name|cut:"materials/" }}
-                </a>
-            {% endif %}
-            <div class="m-footer">
-                <div class="m-author">
-                    <div class="author-avatar">{{ m.author.username|first|upper }}</div>
-                    {{ m.author.username }}
-                </div>
-                <div class="m-date">{{ m.created_at|date:"d.m.Y" }}</div>
-            </div>
+    .author-avatar {
+        width: 22px; height: 22px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; color: white;
+    }
+    .material-card .m-date { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    .file-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 12px; margin-bottom: 12px;
+        background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25);
+        border-radius: 8px; color: var(--accent); text-decoration: none;
+        font-size: 13px; font-weight: 600; transition: all 0.2s; word-break: break-all;
+    }
+    .file-link:hover { background: rgba(59,130,246,0.2); }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📚 База учебных материалов</h1>
+    <p>Общая база знаний для всех учителей студии</p>
+</div>
+
+<div class="add-card">
+    <h2>+ Добавить новый материал</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Название</label>
+            <input type="text" name="title" placeholder="Например: Курс Python с нуля" required>
         </div>
-        {% endfor %}
+        <div class="form-group">
+            <label>Описание или ссылка</label>
+            <textarea name="content" rows="3" placeholder="Ссылка на материал, описание, заметки..." required></textarea>
+        </div>
+        <div class="form-group">
+            <label>Файл (необязательно) — PDF, Word, изображение</label>
+            <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg">
+        </div>
+        <button type="submit" class="btn-publish">📤 Опубликовать</button>
+    </form>
+</div>
+
+{% if materials %}
+<div class="materials-grid">
+    {% for m in materials %}
+    <div class="material-card">
+        <div class="m-title">{{ m.title }}</div>
+        <div class="m-content">{{ m.content|linebreaks }}</div>
+        {% if m.file %}
+            <a href="{{ m.file.url }}" target="_blank" class="file-link">
+                {% with m.file.name|lower as fname %}
+                    {% if '.pdf' in fname %}📄
+                    {% elif '.doc' in fname %}📝
+                    {% elif '.jpg' in fname or '.png' in fname or '.jpeg' in fname %}🖼
+                    {% else %}📎{% endif %}
+                {% endwith %}
+                {{ m.file.name|cut:"materials/" }}
+            </a>
+        {% endif %}
+        <div class="m-footer">
+            <div class="m-author">
+                <div class="author-avatar">{{ m.author.username|first|upper }}</div>
+                {{ m.author.username }}
+            </div>
+            <div class="m-date">{{ m.created_at|date:"d.m.Y" }}</div>
+        </div>
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="big">📭</div>
-        <p>Материалов пока нет. Добавьте первый!</p>
-    </div>
-    {% endif %}
-</main>
-</body>
-</html>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="big">📭</div>
+    <p>Материалов пока нет. Добавьте первый!</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,153 +1,130 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Отчёты — ITишник</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--accent:#3b82f6;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--text:#f1f5f9;--muted:#64748b;--muted2:#94a3b8;}
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-        .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:24px 0;}
-        .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-        .sidebar-logo .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:8px 16px;border-radius:50px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:white;}
-        .sidebar-user{padding:12px 20px;margin-bottom:8px;}
-        .sidebar-user .name{font-weight:700;font-size:14px;}
-        .sidebar-user .role{font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all 0.15s;border-left:3px solid transparent;margin:2px 0;}
-        .nav-item:hover{color:var(--text);background:var(--surface2);}
-        .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(59,130,246,0.08);}
-        .nav-item .icon{font-size:18px;width:22px;text-align:center;}
-        .sidebar-bottom{margin-top:auto;padding:0 20px;border-top:1px solid var(--border);padding-top:16px;}
-        .btn-logout{width:100%;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#fca5a5;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-        .btn-logout:hover{background:rgba(239,68,68,0.2);}
-        .main{margin-left:240px;padding:32px;}
-        .page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:16px;}
-        .page-header h1{font-size:26px;font-weight:800;}
-        .page-header p{color:var(--muted);font-size:14px;margin-top:4px;}
+{% extends 'core/base.html' %}
+{% load static %}
 
-        .period-tabs{display:flex;gap:8px;flex-wrap:wrap;}
-        .period-tab{padding:9px 20px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;transition:all 0.2s;border:1px solid var(--border);color:var(--muted2);}
-        .period-tab:hover{color:var(--text);border-color:var(--accent);}
-        .period-tab.active{background:var(--accent);color:white;border-color:var(--accent);}
+{% block title %}Отчёты — ITишник{% endblock %}
+{% block nav_reports %}active{% endblock %}
 
-        .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
-        @media(max-width:700px){.stats-grid{grid-template-columns:1fr;}}
-        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;position:relative;overflow:hidden;text-align:center;}
-        .stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
-        .stat-card.revenue::after{background:linear-gradient(90deg,var(--green),#059669);}
-        .stat-card.expense::after{background:linear-gradient(90deg,var(--red),#dc2626);}
-        .stat-card.profit::after{background:linear-gradient(90deg,var(--accent),var(--accent2));}
-        .stat-card .s-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;}
-        .stat-card .s-value{font-size:30px;font-weight:800;line-height:1;}
-        .stat-card.revenue .s-value{color:var(--green);}
-        .stat-card.expense .s-value{color:var(--red);}
-        .stat-card.profit .s-value{color:var(--accent);}
+{% block extra_css %}
+<style>
+    /* Переопределяем page-header для размещения вкладок справа */
+    .page-header {
+        display: flex; justify-content: space-between;
+        align-items: flex-start; flex-wrap: wrap; gap: 16px;
+    }
 
-        .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
-        .card-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-        .card-header h2{font-size:15px;font-weight:700;}
-        .btn-export{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:var(--green);text-decoration:none;font-size:13px;font-weight:700;transition:all 0.2s;}
-        .btn-export:hover{background:rgba(16,185,129,0.2);}
-        table{width:100%;border-collapse:collapse;}
-        thead th{padding:12px 20px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
-        tbody tr{border-bottom:1px solid var(--border);transition:background 0.15s;}
-        tbody tr:last-child{border-bottom:none;}
-        tbody tr:hover{background:rgba(255,255,255,0.02);}
-        tbody td{padding:14px 20px;font-size:14px;}
-        .val-green{color:var(--green);font-weight:700;font-family:'JetBrains Mono',monospace;}
-        .val-red{color:var(--red);font-weight:600;font-family:'JetBrains Mono',monospace;}
-        .val-blue{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;}
-        .empty-row td{text-align:center;color:var(--muted);padding:40px;}
-    </style>
-</head>
-<body>
-<nav class="sidebar">
-    <div class="sidebar-logo"><div class="badge">⚡ ITишник</div></div>
-    <div class="sidebar-user">
-        <div class="name">{{ user.username }}</div>
-        <div class="role">{{ user.get_role_display }}</div>
+    .period-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .period-tab {
+        padding: 9px 20px; border-radius: 10px; text-decoration: none;
+        font-size: 13px; font-weight: 600; transition: all 0.2s;
+        border: 1px solid var(--border); color: var(--muted2);
+    }
+    .period-tab:hover { color: var(--text); border-color: var(--accent); }
+    .period-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* STAT CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 22px 24px;
+        position: relative; overflow: hidden; text-align: center;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .stat-card.revenue::after { background: linear-gradient(90deg, var(--green), #059669); }
+    .stat-card.expense::after { background: linear-gradient(90deg, var(--red), #dc2626); }
+    .stat-card.profit::after  { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .stat-card .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+    .stat-card .s-value { font-size: 30px; font-weight: 800; line-height: 1; }
+    .stat-card.revenue .s-value { color: var(--green); }
+    .stat-card.expense .s-value { color: var(--red); }
+    .stat-card.profit  .s-value { color: var(--accent); }
+
+    /* TABLE CARD */
+    .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; overflow: hidden;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .card-header {
+        padding: 18px 24px; border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-header h2 { font-size: 15px; font-weight: 700; }
+
+    .btn-export {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 9px 18px; background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.3); border-radius: 8px;
+        color: var(--green); text-decoration: none;
+        font-size: 13px; font-weight: 700; transition: all 0.2s;
+    }
+    .btn-export:hover { background: rgba(16,185,129,0.2); }
+
+    .subject-pill {
+        background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
+        color: var(--accent); padding: 3px 10px; border-radius: 6px; font-size: 12px;
+    }
+    .val-green { color: var(--green); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .val-red   { color: var(--red);   font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .val-blue  { color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .empty-row td { text-align: center; color: var(--muted); padding: 40px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>📊 Финансовая отчётность</h1>
+        <p>Сводные данные по доходности студии</p>
     </div>
-    {% if user.role == 'admin' %}
-        <a href="{% url 'dashboard' %}" class="nav-item"><span class="icon">🏠</span> Дашборд</a>
-    {% endif %}
-    <a href="{% url 'calendar' %}" class="nav-item"><span class="icon">📅</span> Расписание</a>
-    <a href="{% url 'messages_list' %}" class="nav-item"><span class="icon">💬</span> Сообщения</a>
-    <a href="{% url 'notifications' %}" class="nav-item">
-        <span class="icon">🔔</span> Уведомления
-        {% if notif_count > 0 %}
-            <span class="nav-badge">{{ notif_count }}</span>
-        {% endif %}
-    </a>
-    <a href="{% url 'profile' %}" class="nav-item"><span class="icon">👤</span> Личный кабинет</a>
-    <a href="{% url 'materials' %}" class="nav-item"><span class="icon">📚</span> Материалы</a>
-    <a href="{% url 'homework' %}" class="nav-item"><span class="icon">📝</span> Домашние задания</a>
-    <a href="{% url 'reports_page' %}" class="nav-item active"><span class="icon">📊</span> Отчёты</a>
-    <a href="{% url 'admin_panel' %}" class="nav-item"><span class="icon">⚙️</span> Управление</a>
-    <div class="sidebar-bottom">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn-logout">→ Выйти из системы</button>
-        </form>
+    <div class="period-tabs">
+        <a href="?period=week"  class="period-tab {% if period == 'week' %}active{% endif %}">Неделя</a>
+        <a href="?period=month" class="period-tab {% if period == 'month' %}active{% endif %}">Месяц</a>
+        <a href="?period=year"  class="period-tab {% if period == 'year' %}active{% endif %}">Год</a>
     </div>
-</nav>
+</div>
 
-<main class="main">
-    <div class="page-header">
-        <div>
-            <h1>📊 Финансовая отчётность</h1>
-            <p>Сводные данные по доходности студии</p>
-        </div>
-        <div class="period-tabs">
-            <a href="?period=week" class="period-tab {% if period == 'week' %}active{% endif %}">Неделя</a>
-            <a href="?period=month" class="period-tab {% if period == 'month' %}active{% endif %}">Месяц</a>
-            <a href="?period=year" class="period-tab {% if period == 'year' %}active{% endif %}">Год</a>
-        </div>
+<div class="stats-grid">
+    <div class="stat-card revenue">
+        <div class="s-label">Валовая выручка</div>
+        <div class="s-value">{{ total_revenue }} ₽</div>
     </div>
+    <div class="stat-card expense">
+        <div class="s-label">Фонд оплаты труда</div>
+        <div class="s-value">{{ total_salaries }} ₽</div>
+    </div>
+    <div class="stat-card profit">
+        <div class="s-label">Чистая прибыль</div>
+        <div class="s-value">{{ net_profit }} ₽</div>
+    </div>
+</div>
 
-    <div class="stats-grid">
-        <div class="stat-card revenue">
-            <div class="s-label">Валовая выручка</div>
-            <div class="s-value">{{ total_revenue }} ₽</div>
-        </div>
-        <div class="stat-card expense">
-            <div class="s-label">Фонд оплаты труда</div>
-            <div class="s-value">{{ total_salaries }} ₽</div>
-        </div>
-        <div class="stat-card profit">
-            <div class="s-label">Чистая прибыль</div>
-            <div class="s-value">{{ net_profit }} ₽</div>
-        </div>
+<div class="card">
+    <div class="card-header">
+        <h2>Детализация операций</h2>
+        <a href="{% url 'export_detailed_report' %}?period={{ period }}" class="btn-export">📥 Экспорт в Excel</a>
     </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2>Детализация операций</h2>
-            <a href="{% url 'export_detailed_report' %}?period={{ period }}" class="btn-export">📥 Экспорт в Excel</a>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата</th><th>Учитель</th><th>Предмет</th>
-                    <th>Приход</th><th>Расход</th><th>Маржа</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in report_data %}
-                <tr>
-                    <td style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted2);">{{ item.date|date:"d.m.Y H:i" }}</td>
-                    <td style="font-weight:600;">{{ item.teacher }}</td>
-                    <td><span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:12px;">{{ item.subject }}</span></td>
-                    <td class="val-green">+{{ item.revenue }} ₽</td>
-                    <td class="val-red">-{{ item.salary }} ₽</td>
-                    <td class="val-blue">{{ item.profit }} ₽</td>
-                </tr>
-                {% empty %}
-                <tr class="empty-row"><td colspan="6">Данных за выбранный период нет</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</main>
-</body>
-</html>
+    <table>
+        <thead>
+            <tr>
+                <th>Дата</th><th>Учитель</th><th>Предмет</th>
+                <th>Приход</th><th>Расход</th><th>Маржа</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in report_data %}
+            <tr>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted2);">{{ item.date|date:"d.m.Y H:i" }}</td>
+                <td style="font-weight:600;">{{ item.teacher }}</td>
+                <td><span class="subject-pill">{{ item.subject }}</span></td>
+                <td class="val-green">+{{ item.revenue }} ₽</td>
+                <td class="val-red">-{{ item.salary }} ₽</td>
+                <td class="val-blue">{{ item.profit }} ₽</td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="6">Данных за выбранный период нет</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
