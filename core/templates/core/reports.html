@@ -6,94 +6,206 @@
 
 {% block extra_css %}
 <style>
-    /* Переопределяем page-header для размещения вкладок справа */
     .page-header {
         display: flex; justify-content: space-between;
         align-items: flex-start; flex-wrap: wrap; gap: 16px;
+        margin-bottom: 24px;
     }
 
-    .period-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-    .period-tab {
-        padding: 9px 20px; border-radius: 10px; text-decoration: none;
+    /* ── ВКЛАДКИ ── */
+    .report-tabs {
+        display: flex; gap: 4px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 4px;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .report-tab {
+        padding: 8px 18px; border-radius: 9px; text-decoration: none;
         font-size: 13px; font-weight: 600; transition: all 0.2s;
-        border: 1px solid var(--border); color: var(--muted2);
+        color: var(--muted2); white-space: nowrap;
     }
-    .period-tab:hover { color: var(--text); border-color: var(--accent); }
-    .period-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .report-tab:hover { color: var(--text); background: var(--surface2); }
+    .report-tab.active { background: var(--accent); color: white; }
 
-    /* STAT CARDS */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    /* ── ПЕРИОД ── */
+    .toolbar {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 12px 18px; margin-bottom: 24px;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap;
+        transition: background 0.3s, border-color 0.3s;
+    }
+    .period-pills {
+        display: flex; background: var(--surface2);
+        border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .period-pill {
+        padding: 6px 18px; border: none; background: transparent;
+        color: var(--muted2); font-family: 'Manrope', sans-serif;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all 0.15s; border-right: 1px solid var(--border);
+        text-decoration: none; display: inline-block;
+    }
+    .period-pill:last-child { border-right: none; }
+    .period-pill:hover { color: var(--text); }
+    .period-pill.active { background: var(--accent); color: white; }
+
+    .btn-export {
+        display: inline-flex; align-items: center; gap: 8px; height: 36px;
+        padding: 0 16px; background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.3); border-radius: 8px;
+        color: var(--green); text-decoration: none;
+        font-size: 13px; font-weight: 700; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-export:hover { background: rgba(16,185,129,0.2); }
+
+    /* ── КАРТОЧКИ KPI ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
     .stat-card {
         background: var(--surface); border: 1px solid var(--border);
         border-radius: 16px; padding: 22px 24px;
         position: relative; overflow: hidden; text-align: center;
-        transition: background 0.3s, border-color 0.3s;
+        transition: background 0.3s, border-color 0.3s, transform 0.2s;
     }
-    .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-    .stat-card.revenue::after { background: linear-gradient(90deg, var(--green), #059669); }
-    .stat-card.expense::after { background: linear-gradient(90deg, var(--red), #dc2626); }
-    .stat-card.profit::after  { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
-    .stat-card .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
-    .stat-card .s-value { font-size: 30px; font-weight: 800; line-height: 1; }
-    .stat-card.revenue .s-value { color: var(--green); }
-    .stat-card.expense .s-value { color: var(--red); }
-    .stat-card.profit  .s-value { color: var(--accent); }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card.c-green::after  { background: linear-gradient(90deg, var(--green), #059669); }
+    .stat-card.c-red::after    { background: linear-gradient(90deg, var(--red), #dc2626); }
+    .stat-card.c-blue::after   { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .stat-card.c-yellow::after { background: linear-gradient(90deg, var(--yellow), #d97706); }
+    .stat-card.c-purple::after { background: linear-gradient(90deg, var(--purple), #6d28d9); }
+    .stat-card .s-icon  { font-size: 24px; margin-bottom: 10px; }
+    .stat-card .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .stat-card .s-value { font-size: 28px; font-weight: 800; line-height: 1; font-family: 'JetBrains Mono', monospace; }
+    .stat-card.c-green .s-value  { color: var(--green); }
+    .stat-card.c-red .s-value    { color: var(--red); }
+    .stat-card.c-blue .s-value   { color: var(--accent); }
+    .stat-card.c-yellow .s-value { color: var(--yellow); }
+    .stat-card.c-purple .s-value { color: var(--purple); }
 
-    /* TABLE CARD */
+    /* ── ОБЩАЯ КАРТОЧКА ── */
     .card {
         background: var(--surface); border: 1px solid var(--border);
-        border-radius: 16px; overflow: hidden;
+        border-radius: 16px; overflow: hidden; margin-bottom: 20px;
         transition: background 0.3s, border-color 0.3s;
     }
     .card-header {
-        padding: 18px 24px; border-bottom: 1px solid var(--border);
-        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 22px; border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
     .card-header h2 { font-size: 15px; font-weight: 700; }
+    .card-header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-    .btn-export {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 9px 18px; background: rgba(16,185,129,0.1);
-        border: 1px solid rgba(16,185,129,0.3); border-radius: 8px;
-        color: var(--green); text-decoration: none;
-        font-size: 13px; font-weight: 700; transition: all 0.2s;
+    /* ── ТАБЛИЦЫ ── */
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+        padding: 12px 16px; text-align: left;
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.8px; color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
     }
-    .btn-export:hover { background: rgba(16,185,129,0.2); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: 11px 16px; font-size: 13px; }
+    .empty-row td { text-align: center; color: var(--muted); padding: 48px; font-size: 14px; }
 
+    .val-green { color: var(--green); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .val-red   { color: var(--red);   font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .val-blue  { color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .val-mono  { font-family: 'JetBrains Mono', monospace; color: var(--muted2); font-size: 12px; }
     .subject-pill {
         background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
         color: var(--accent); padding: 3px 10px; border-radius: 6px; font-size: 12px;
     }
-    .val-green { color: var(--green); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-    .val-red   { color: var(--red);   font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-    .val-blue  { color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-    .empty-row td { text-align: center; color: var(--muted); padding: 40px; }
+    .rank-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 50%;
+        font-size: 11px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+        background: var(--surface2); color: var(--muted);
+    }
+    .rank-badge.gold   { background: rgba(245,158,11,0.2); color: var(--yellow); }
+    .rank-badge.silver { background: rgba(148,163,184,0.2); color: #94a3b8; }
+    .rank-badge.bronze { background: rgba(180,120,60,0.2);  color: #b47c3c; }
+
+    /* ── ПРОГРЕСС-БАР ── */
+    .bar-cell { min-width: 120px; }
+    .bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+    .bar-fill.green  { background: linear-gradient(90deg, var(--green), #059669); }
+    .bar-fill.red    { background: linear-gradient(90deg, var(--red), #dc2626); }
+    .bar-fill.yellow { background: linear-gradient(90deg, var(--yellow), #d97706); }
+    .bar-fill.blue   { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .bar-label { font-size: 12px; font-weight: 700; min-width: 32px; text-align: right; }
+
+    /* ── CANCEL RATE BADGE ── */
+    .rate-badge {
+        display: inline-block; padding: 2px 8px; border-radius: 6px;
+        font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    }
+    .rate-badge.low  { background: rgba(16,185,129,0.15); color: var(--green); }
+    .rate-badge.mid  { background: rgba(245,158,11,0.15);  color: var(--yellow); }
+    .rate-badge.high { background: rgba(239,68,68,0.15);   color: var(--red); }
+
+    @media (max-width: 900px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .report-tabs { flex-wrap: wrap; }
+    }
+    @media (max-width: 600px) {
+        .stats-grid { grid-template-columns: 1fr; }
+        .bar-cell { display: none; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>📊 Финансовая отчётность</h1>
-        <p>Сводные данные по доходности студии</p>
+        <h1>📊 Отчёты</h1>
+        <p>Аналитика по финансам, загруженности и отменам</p>
     </div>
-    <div class="period-tabs">
-        <a href="?period=week"  class="period-tab {% if period == 'week' %}active{% endif %}">Неделя</a>
-        <a href="?period=month" class="period-tab {% if period == 'month' %}active{% endif %}">Месяц</a>
-        <a href="?period=year"  class="period-tab {% if period == 'year' %}active{% endif %}">Год</a>
+    <!-- ВКЛАДКИ -->
+    <div class="report-tabs">
+        <a href="?tab=finance&period={{ period }}" class="report-tab {% if tab == 'finance' %}active{% endif %}">💰 Финансы</a>
+        <a href="?tab=workload&period={{ period }}" class="report-tab {% if tab == 'workload' %}active{% endif %}">📅 Загруженность</a>
+        <a href="?tab=cancels&period={{ period }}"  class="report-tab {% if tab == 'cancels' %}active{% endif %}">📉 Отмены</a>
     </div>
 </div>
 
+<!-- ФИЛЬТР ПЕРИОДА -->
+<div class="toolbar">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span style="font-size:12px; font-weight:700; color:var(--muted);">📆 Период</span>
+        <div class="period-pills">
+            <a href="?tab={{ tab }}&period=week"  class="period-pill {% if period == 'week' %}active{% endif %}">Неделя</a>
+            <a href="?tab={{ tab }}&period=month" class="period-pill {% if period == 'month' %}active{% endif %}">Месяц</a>
+            <a href="?tab={{ tab }}&period=year"  class="period-pill {% if period == 'year' %}active{% endif %}">Год</a>
+        </div>
+    </div>
+    {% if tab == 'finance' %}
+    <a href="{% url 'export_detailed_report' %}?period={{ period }}" class="btn-export">📥 Экспорт в Excel</a>
+    {% endif %}
+</div>
+
+
+{# ════════════════════════════ ФИНАНСЫ ════════════════════════════ #}
+{% if tab == 'finance' %}
+
 <div class="stats-grid">
-    <div class="stat-card revenue">
+    <div class="stat-card c-green">
+        <div class="s-icon">💰</div>
         <div class="s-label">Валовая выручка</div>
         <div class="s-value">{{ total_revenue }} ₽</div>
     </div>
-    <div class="stat-card expense">
+    <div class="stat-card c-red">
+        <div class="s-icon">💸</div>
         <div class="s-label">Фонд оплаты труда</div>
         <div class="s-value">{{ total_salaries }} ₽</div>
     </div>
-    <div class="stat-card profit">
+    <div class="stat-card c-blue">
+        <div class="s-icon">📈</div>
         <div class="s-label">Чистая прибыль</div>
         <div class="s-value">{{ net_profit }} ₽</div>
     </div>
@@ -101,30 +213,230 @@
 
 <div class="card">
     <div class="card-header">
-        <h2>Детализация операций</h2>
-        <a href="{% url 'export_detailed_report' %}?period={{ period }}" class="btn-export">📥 Экспорт в Excel</a>
+        <div>
+            <h2>Детализация операций</h2>
+            <div class="sub">Каждый проведённый урок за выбранный период</div>
+        </div>
     </div>
     <table>
         <thead>
-            <tr>
-                <th>Дата</th><th>Учитель</th><th>Предмет</th>
-                <th>Приход</th><th>Расход</th><th>Маржа</th>
-            </tr>
+            <tr><th>Дата</th><th>Учитель</th><th>Предмет</th><th>Приход</th><th>Расход</th><th>Маржа</th></tr>
         </thead>
         <tbody>
             {% for item in report_data %}
             <tr>
-                <td style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted2);">{{ item.date|date:"d.m.Y H:i" }}</td>
+                <td class="val-mono">{{ item.date|date:"d.m.Y H:i" }}</td>
                 <td style="font-weight:600;">{{ item.teacher }}</td>
                 <td><span class="subject-pill">{{ item.subject }}</span></td>
                 <td class="val-green">+{{ item.revenue }} ₽</td>
-                <td class="val-red">-{{ item.salary }} ₽</td>
+                <td class="val-red">−{{ item.salary }} ₽</td>
                 <td class="val-blue">{{ item.profit }} ₽</td>
             </tr>
             {% empty %}
-            <tr class="empty-row"><td colspan="6">Данных за выбранный период нет</td></tr>
+            <tr class="empty-row"><td colspan="6">📭 Данных за выбранный период нет</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+
+{# ════════════════════════════ ЗАГРУЖЕННОСТЬ ════════════════════════════ #}
+{% elif tab == 'workload' %}
+
+<div class="stats-grid">
+    <div class="stat-card c-blue">
+        <div class="s-icon">📅</div>
+        <div class="s-label">Всего уроков</div>
+        <div class="s-value">{{ workload_total }}</div>
+    </div>
+    <div class="stat-card c-green">
+        <div class="s-icon">✅</div>
+        <div class="s-label">Проведено</div>
+        <div class="s-value">{{ workload_done_total }}</div>
+    </div>
+    <div class="stat-card c-yellow">
+        <div class="s-icon">⏳</div>
+        <div class="s-label">Запланировано</div>
+        <div class="s-value">{{ workload_sched_total }}</div>
+    </div>
+</div>
+
+<!-- Загруженность по учителям -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2>📅 Загруженность по учителям</h2>
+            <div class="sub">Количество уроков за выбранный период</div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Учитель</th><th>Проведено</th><th>Запланировано</th><th>Всего</th><th class="bar-cell">Загруженность</th></tr>
+        </thead>
+        <tbody>
+            {% for t in teacher_workload %}
+            <tr>
+                <td>
+                    <span class="rank-badge {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
+                        {{ forloop.counter }}
+                    </span>
+                </td>
+                <td style="font-weight:600;">{{ t.name }}</td>
+                <td class="val-green">{{ t.done }}</td>
+                <td class="val-blue">{{ t.scheduled }}</td>
+                <td style="font-weight:700;">{{ t.total }}</td>
+                <td class="bar-cell">
+                    <div class="bar-wrap">
+                        <div class="bar-track">
+                            <div class="bar-fill blue" style="width:{{ t.pct }}%;"></div>
+                        </div>
+                        <span class="bar-label val-blue">{{ t.pct }}%</span>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="6">📭 Нет данных за период</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Загруженность по предметам -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2>📚 Популярность направлений</h2>
+            <div class="sub">Сколько уроков по каждому предмету</div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Предмет</th><th>Уроков</th><th class="bar-cell">Доля</th></tr>
+        </thead>
+        <tbody>
+            {% for s in subject_workload %}
+            <tr>
+                <td>
+                    <span class="rank-badge {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
+                        {{ forloop.counter }}
+                    </span>
+                </td>
+                <td><span class="subject-pill">{{ s.name }}</span></td>
+                <td style="font-weight:700;">{{ s.count }}</td>
+                <td class="bar-cell">
+                    <div class="bar-wrap">
+                        <div class="bar-track">
+                            <div class="bar-fill green" style="width:{{ s.pct }}%;"></div>
+                        </div>
+                        <span class="bar-label val-green">{{ s.pct }}%</span>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="4">📭 Нет данных за период</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+{# ════════════════════════════ ОТМЕНЫ ════════════════════════════ #}
+{% elif tab == 'cancels' %}
+
+<div class="stats-grid">
+    <div class="stat-card c-red">
+        <div class="s-icon">❌</div>
+        <div class="s-label">Всего отмен</div>
+        <div class="s-value">{{ total_cancels }}</div>
+    </div>
+    <div class="stat-card c-yellow">
+        <div class="s-icon">📉</div>
+        <div class="s-label">Процент отмен</div>
+        <div class="s-value">{{ cancel_rate }}%</div>
+    </div>
+    <div class="stat-card c-purple">
+        <div class="s-icon">💔</div>
+        <div class="s-label">Потери выручки</div>
+        <div class="s-value">{{ cancel_revenue_loss }} ₽</div>
+    </div>
+</div>
+
+<!-- Отмены по учителям -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2>👨‍🏫 Отмены по учителям</h2>
+            <div class="sub">Кто отменяет больше всего</div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Учитель</th><th>Отмен</th><th>Всего уроков</th><th>Процент</th><th class="bar-cell">Уровень</th></tr>
+        </thead>
+        <tbody>
+            {% for t in teacher_cancels %}
+            <tr>
+                <td style="font-weight:600;">{{ t.name }}</td>
+                <td class="val-red">{{ t.cancels }}</td>
+                <td class="val-mono">{{ t.total }}</td>
+                <td>
+                    <span class="rate-badge {% if t.rate < 10 %}low{% elif t.rate < 25 %}mid{% else %}high{% endif %}">
+                        {{ t.rate }}%
+                    </span>
+                </td>
+                <td class="bar-cell">
+                    <div class="bar-wrap">
+                        <div class="bar-track">
+                            <div class="bar-fill {% if t.rate < 10 %}green{% elif t.rate < 25 %}yellow{% else %}red{% endif %}" style="width:{{ t.rate }}%;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="5">✅ Отмен нет — отличный результат!</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Отмены по ученикам -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2>👨‍🎓 Отмены по ученикам</h2>
+            <div class="sub">Кто чаще всего отменяет занятия</div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Ученик</th><th>Отмен</th><th>Всего уроков</th><th>Процент</th><th class="bar-cell">Уровень</th></tr>
+        </thead>
+        <tbody>
+            {% for s in student_cancels %}
+            <tr>
+                <td style="font-weight:600;">{{ s.name }}</td>
+                <td class="val-red">{{ s.cancels }}</td>
+                <td class="val-mono">{{ s.total }}</td>
+                <td>
+                    <span class="rate-badge {% if s.rate < 10 %}low{% elif s.rate < 25 %}mid{% else %}high{% endif %}">
+                        {{ s.rate }}%
+                    </span>
+                </td>
+                <td class="bar-cell">
+                    <div class="bar-wrap">
+                        <div class="bar-track">
+                            <div class="bar-fill {% if s.rate < 10 %}green{% elif s.rate < 25 %}yellow{% else %}red{% endif %}" style="width:{{ s.rate }}%;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="5">✅ Отмен нет — отличный результат!</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endif %}
+
 {% endblock %}

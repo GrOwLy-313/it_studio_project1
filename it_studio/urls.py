@@ -34,4 +34,5 @@ urlpatterns = [
     path('chat/<int:user_id>/poll/', views.chat_poll, name='chat_poll'),
     path('chat/<int:user_id>/send/', views.chat_send, name='chat_send'),
     path('archive/', views.archive_view, name='archive'),
+    path('notes/save/', views.save_student_note, name='save_student_note'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

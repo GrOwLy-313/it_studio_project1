@@ -27,7 +27,7 @@
     .list-item:last-child { border-bottom: none; }
     .list-item .item-name { font-size: 14px; font-weight: 600; }
     .list-item .item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .btn-del { padding: 5px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-del { padding: 5px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; }
     .btn-del:hover { background: rgba(239,68,68,0.2); }
 
     .price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -38,7 +38,7 @@
     .tag-price { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
     .price-actions { display: flex; gap: 6px; align-items: center; }
     .price-actions input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none; width: 100px; }
-    .btn-price { padding: 6px 12px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn-price { padding: 6px 12px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: 'Manrope', sans-serif; }
     .btn-price:hover { background: rgba(59,130,246,0.2); }
 
     .assign-form { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 20px; }
@@ -56,13 +56,68 @@
     .assign-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
     .assign-table td { padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
     .assign-table tr:last-child td { border-bottom: none; }
+
+    /* Тост уведомление */
+    .toast {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        background: var(--green); color: white;
+        padding: 12px 20px; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+        transform: translateY(80px); opacity: 0;
+        transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: var(--red); box-shadow: 0 4px 20px rgba(239,68,68,0.4); }
+
+    /* Профиль админа */
+    .admin-profile-card {
+        background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.08));
+        border: 1px solid rgba(59,130,246,0.2);
+        border-radius: 14px; padding: 20px 24px; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 16px;
+    }
+    .admin-avatar {
+        width: 52px; height: 52px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 800; color: white; flex-shrink: 0;
+    }
+    .admin-profile-info { flex: 1; }
+    .admin-profile-info .a-name { font-size: 16px; font-weight: 700; }
+    .admin-profile-info .a-login { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .admin-edit-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .admin-edit-row input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; flex: 1; transition: border-color 0.2s; }
+    .admin-edit-row input:focus { border-color: var(--accent); }
+    .btn-save-admin { padding: 8px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- ТОСТ -->
+<div class="toast" id="toast"></div>
+
 <div class="page-header">
     <h1>⚙️ Управление студией</h1>
     <p>Пользователи, направления, ставки и назначения</p>
+</div>
+
+<!-- БАГ 4: Профиль администратора -->
+<div class="admin-profile-card">
+    <div class="admin-avatar">{{ user.username|first|upper }}</div>
+    <div class="admin-profile-info">
+        <div class="a-name" id="adminDisplayName">
+            {% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}
+        </div>
+        <div class="a-login">логин: {{ user.username }}</div>
+        <div class="admin-edit-row">
+            <input type="text" id="adminFullnameInput"
+                   value="{% if user.first_name %}{{ user.first_name }}{% endif %}"
+                   placeholder="Ваше ФИО (отображается везде в системе)">
+            <button class="btn-save-admin" onclick="saveAdminProfile()">Сохранить</button>
+        </div>
+    </div>
 </div>
 
 <div class="grid-2">
@@ -70,24 +125,21 @@
     <!-- УЧИТЕЛЯ -->
     <div class="card">
         <h2>👨‍🏫 Учителя</h2>
-        <form method="post">
+        <form id="createTeacherForm" data-action="create_teacher">
             {% csrf_token %}
-            <div class="form-group"><label>Логин</label><input type="text" name="teacher_username" placeholder="Логин учителя" required></div>
-            <div class="form-group"><label>ФИО</label><input type="text" name="teacher_fullname" placeholder="Необязательно"></div>
+            <div class="form-group"><label>Логин</label><input type="text" name="teacher_username" placeholder="Логин для входа" required></div>
+            <div class="form-group"><label>ФИО</label><input type="text" name="teacher_fullname" placeholder="Иванов Иван Иванович"></div>
             <div class="form-group"><label>Пароль</label><input type="password" name="teacher_password" placeholder="Пароль" required></div>
             <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
         </form>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px;" id="teachersList">
             {% for t in teachers %}
-            <div class="list-item">
+            <div class="list-item" id="teacher-{{ t.id }}">
                 <div>
-                    <div class="item-name">{{ t.username }}</div>
-                    {% if t.first_name %}<div class="item-sub">{{ t.first_name }}</div>{% endif %}
+                    <div class="item-name">{% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">{{ t.username }}</div>
                 </div>
-                <form method="post" onsubmit="return confirm('Удалить учителя?')">
-                    {% csrf_token %}<input type="hidden" name="user_id" value="{{ t.id }}">
-                    <button type="submit" name="delete_user" class="btn-del">Удалить</button>
-                </form>
+                <button class="btn-del" data-user-id="{{ t.id }}" data-elem-id="teacher-{{ t.id }}" onclick="deleteUser(this)">Удалить</button>
             </div>
             {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учителей пока нет</p>{% endfor %}
         </div>
@@ -96,20 +148,21 @@
     <!-- УЧЕНИКИ -->
     <div class="card">
         <h2>🎓 Ученики</h2>
-        <form method="post">
+        <form id="createStudentForm" data-action="create_student">
             {% csrf_token %}
-            <div class="form-group"><label>Логин / ФИО</label><input type="text" name="username" placeholder="ФИО ученика" required></div>
+            <div class="form-group"><label>Логин</label><input type="text" name="username" placeholder="Логин для входа" required></div>
+            <div class="form-group"><label>ФИО</label><input type="text" name="student_fullname" placeholder="Петров Пётр Петрович"></div>
             <div class="form-group"><label>Пароль</label><input type="password" name="password" placeholder="Пароль" required></div>
             <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
         </form>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px;" id="studentsList">
             {% for s in students %}
-            <div class="list-item">
-                <div class="item-name">{{ s.username }}</div>
-                <form method="post" onsubmit="return confirm('Удалить ученика?')">
-                    {% csrf_token %}<input type="hidden" name="user_id" value="{{ s.id }}">
-                    <button type="submit" name="delete_user" class="btn-del">Удалить</button>
-                </form>
+            <div class="list-item" id="student-{{ s.id }}">
+                <div>
+                    <div class="item-name">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">{{ s.username }}</div>
+                </div>
+                <button class="btn-del" data-user-id="{{ s.id }}" data-elem-id="student-{{ s.id }}" onclick="deleteUser(this)">Удалить</button>
             </div>
             {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учеников пока нет</p>{% endfor %}
         </div>
@@ -118,7 +171,7 @@
     <!-- НАПРАВЛЕНИЯ -->
     <div class="card">
         <h2>📖 Направления</h2>
-        <form method="post">
+        <form id="createSubjectForm" data-action="create_subject">
             {% csrf_token %}
             <div class="form-group"><label>Название курса</label><input type="text" name="name" placeholder="Например: Python, Робототехника" required></div>
             <div class="form-group">
@@ -129,34 +182,31 @@
             </div>
             <button type="submit" name="create_subject" class="btn-blue">+ Добавить направление</button>
         </form>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px;" id="subjectsList">
             {% for sub in subjects %}
-            <div class="price-row">
+            <div class="price-row" id="subject-{{ sub.id }}">
                 <div class="price-info">
                     <div class="p-name">{{ sub.name }}</div>
                     <div class="p-tags">
                         {% if sub.is_universal %}<span class="tag-universal">🌐 Для всех</span>{% endif %}
-                        <span class="tag-price">{{ sub.price_per_lesson }} ₽</span>
+                        <span class="tag-price" id="price-tag-{{ sub.id }}">{{ sub.price_per_lesson }} ₽</span>
                     </div>
                 </div>
                 <div class="price-actions">
-                    <form method="post" style="display:flex;gap:6px;align-items:center;">
+                    <form onsubmit="ajaxForm(event, this)" style="display:flex;gap:6px;align-items:center;">
                         {% csrf_token %}
                         <input type="hidden" name="subject_id" value="{{ sub.id }}">
                         <input type="color" name="new_color" value="{{ sub.color }}"
                             style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
                         <button type="submit" name="update_color" class="btn-price">Цвет</button>
                     </form>
-                    <form method="post" style="display:flex;gap:6px;align-items:center;">
+                    <form onsubmit="updatePrice(event, this)" data-subject-id="{{ sub.id }}" style="display:flex;gap:6px;align-items:center;">
                         {% csrf_token %}
                         <input type="hidden" name="subject_id" value="{{ sub.id }}">
                         <input type="number" name="new_price" value="{{ sub.price_per_lesson }}">
                         <button type="submit" name="update_price" class="btn-price">Изменить</button>
                     </form>
-                    <form method="post" onsubmit="return confirm('Удалить направление?')">
-                        {% csrf_token %}<input type="hidden" name="subject_id" value="{{ sub.id }}">
-                        <button type="submit" name="delete_subject" class="btn-del">✕</button>
-                    </form>
+                    <button class="btn-del" data-subject-id="{{ sub.id }}" onclick="deleteSubject(this)">✕</button>
                 </div>
             </div>
             {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Направлений пока нет</p>{% endfor %}
@@ -166,14 +216,14 @@
     <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
     <div class="card">
         <h2>🔗 Назначить ученика учителям</h2>
-        <form method="post">
+        <form onsubmit="ajaxForm(event, this)">
             {% csrf_token %}
             <div class="assign-form">
                 <div>
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
                     <select name="student_id" required>
                         <option value="">— Выберите ученика —</option>
-                        {% for s in students %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
+                        {% for s in students %}<option value="{{ s.id }}">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</option>{% endfor %}
                     </select>
                 </div>
                 <div>
@@ -182,7 +232,7 @@
                         {% for t in teachers %}
                         <label class="checkbox-item">
                             <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
-                            {{ t.username }}
+                            {% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}
                         </label>
                         {% endfor %}
                     </div>
@@ -193,11 +243,11 @@
         <div style="margin-top:20px;">
             <table class="assign-table">
                 <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
-                <tbody>
+                <tbody id="assignTable">
                     {% for ts in teacher_students %}
                     <tr>
-                        <td style="font-weight:600;">{{ ts.student.username }}</td>
-                        <td style="color:var(--muted2);">{{ ts.teacher.username }}</td>
+                        <td style="font-weight:600;">{% if ts.student.first_name %}{{ ts.student.first_name }}{% else %}{{ ts.student.username }}{% endif %}</td>
+                        <td style="color:var(--muted2);">{% if ts.teacher.first_name %}{{ ts.teacher.first_name }}{% else %}{{ ts.teacher.username }}{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
@@ -213,11 +263,11 @@
 <div class="card full">
     <h2>💰 Индивидуальные ставки учителей</h2>
     <div class="rates-form">
-        <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+        <form onsubmit="ajaxForm(event, this)" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
             {% csrf_token %}
             <select name="teacher_id" required>
                 <option value="">— Учитель —</option>
-                {% for t in teachers %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
+                {% for t in teachers %}<option value="{{ t.id }}">{% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}</option>{% endfor %}
             </select>
             <select name="subject_id" required>
                 <option value="">— Предмет —</option>
@@ -229,10 +279,10 @@
     </div>
     <table>
         <thead><tr><th>Учитель</th><th>Предмет</th><th>Ставка за урок</th></tr></thead>
-        <tbody>
+        <tbody id="ratesTable">
             {% for r in rates %}
             <tr>
-                <td style="font-weight:600;">{{ r.teacher.username }}</td>
+                <td style="font-weight:600;">{% if r.teacher.first_name %}{{ r.teacher.first_name }}{% else %}{{ r.teacher.username }}{% endif %}</td>
                 <td>{{ r.subject.name }}</td>
                 <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
             </tr>
@@ -242,4 +292,237 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+// ── Тост ──────────────────────────────────────
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Универсальный AJAX submit ───────────────────
+async function ajaxForm(event, form) {
+    event.preventDefault();
+    const data = new FormData(form);
+
+    // Найти какая кнопка была нажата
+    const submitBtn = form.querySelector('[type="submit"]');
+    const actionName = submitBtn?.name;
+    if (actionName) data.append(actionName, '1');
+
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Сохранено');
+            form.reset();
+        } else {
+            showToast('Ошибка', true);
+        }
+    } catch(e) {
+        showToast('Ошибка соединения', true);
+    }
+}
+
+// ── Создать учителя ─────────────────────────────
+document.getElementById('createTeacherForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_teacher', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Учитель создан');
+            const list = document.getElementById('teachersList');
+            const displayName = json.full_name || json.username;
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `teacher-${json.id}`;
+            item.innerHTML = `
+                <div>
+                    <div class="item-name">${displayName}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
+                </div>
+                <button class="btn-del" onclick="deleteUser(${json.id}, 'teacher-${json.id}')">Удалить</button>
+            `;
+            // Убрать "нет учителей" если было
+            list.querySelector('p')?.remove();
+            list.appendChild(item);
+            form.reset();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── Создать ученика ─────────────────────────────
+document.getElementById('createStudentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_student', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Ученик создан');
+            const list = document.getElementById('studentsList');
+            const displayName = json.full_name || json.username;
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `student-${json.id}`;
+            item.innerHTML = `
+                <div>
+                    <div class="item-name">${displayName}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
+                </div>
+                <button class="btn-del" onclick="deleteUser(${json.id}, 'student-${json.id}')">Удалить</button>
+            `;
+            list.querySelector('p')?.remove();
+            list.appendChild(item);
+            form.reset();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── Создать направление ────────────────────────
+document.getElementById('createSubjectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_subject', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Направление добавлено');
+            // Перезагружаем только список — простейший способ обновить цены/формы
+            location.reload();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── Удалить пользователя ────────────────────────
+async function deleteUser(btn) {
+    const userId = btn.dataset.userId;
+    const elemId = btn.dataset.elemId;
+    if (!confirm('Удалить пользователя?')) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('user_id', userId);
+    data.append('delete_user', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const el = document.getElementById(elemId);
+            if (el) {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.3s';
+                setTimeout(() => el.remove(), 300);
+            }
+            showToast('✓ Удалено');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Удалить направление ─────────────────────────
+async function deleteSubject(btn) {
+    const subjectId = btn.dataset.subjectId;
+    if (!confirm('Удалить направление?')) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('subject_id', subjectId);
+    data.append('delete_subject', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const el = document.getElementById(`subject-${subjectId}`);
+            if (el) {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.3s';
+                setTimeout(() => el.remove(), 300);
+            }
+            showToast('✓ Направление удалено');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Обновить цену направления ──────────────────
+async function updatePrice(event, form) {
+    event.preventDefault();
+    const subjectId = form.dataset.subjectId;
+    const data = new FormData(form);
+    data.append('update_price', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            // Обновляем тег с ценой без перезагрузки
+            const tag = document.getElementById(`price-tag-${subjectId}`);
+            if (tag) tag.textContent = json.new_price + ' ₽';
+            showToast('✓ Цена обновлена');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Профиль администратора ──────────────────────
+async function saveAdminProfile() {
+    const fullname = document.getElementById('adminFullnameInput').value.trim();
+    if (!fullname) { showToast('Введите ФИО', true); return; }
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('admin_fullname', fullname);
+    data.append('update_admin_profile', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            document.getElementById('adminDisplayName').textContent = fullname;
+            showToast('✓ Профиль сохранён');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+</script>
 {% endblock %}

@@ -150,32 +150,37 @@
     </div>
 </div>
 
-<!-- Данные для Chart.js -->
-<div id="chart-data"
-    data-months-labels="{{ months_labels|escapejs }}"
-    data-months-data="{{ months_data|escapejs }}"
-    data-revenue-labels="{{ revenue_labels|escapejs }}"
-    data-revenue-data="{{ revenue_data|escapejs }}"
-    data-teacher-labels="{{ teacher_labels|escapejs }}"
-    data-teacher-data="{{ teacher_data|escapejs }}"
-    data-subject-labels="{{ subject_labels|escapejs }}"
-    data-subject-data="{{ subject_data|escapejs }}"
-    style="display:none;">
-</div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Данные для Chart.js — рендерятся до скрипта в том же блоке -->
+<div id="chart-data"
+    data-months-labels="{{ months_labels }}"
+    data-months-data="{{ months_data }}"
+    data-revenue-labels="{{ revenue_labels }}"
+    data-revenue-data="{{ revenue_data }}"
+    data-teacher-labels="{{ teacher_labels }}"
+    data-teacher-data="{{ teacher_data }}"
+    data-subject-labels="{{ subject_labels }}"
+    data-subject-data="{{ subject_data }}"
+    style="display:none;">
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
+    function safeJSON(str, fallback) {
+        try { return JSON.parse(str || fallback); }
+        catch(e) { console.warn('Chart data parse error:', e, str); return JSON.parse(fallback); }
+    }
+
     const d = document.getElementById('chart-data').dataset;
-    const monthsLabels  = JSON.parse(d.monthsLabels);
-    const monthsData    = JSON.parse(d.monthsData);
-    const revenueLabels = JSON.parse(d.revenueLabels);
-    const revenueData   = JSON.parse(d.revenueData);
-    const teacherLabels = JSON.parse(d.teacherLabels);
-    const teacherData   = JSON.parse(d.teacherData);
-    const subjectLabels = JSON.parse(d.subjectLabels);
-    const subjectData   = JSON.parse(d.subjectData);
+    const monthsLabels  = safeJSON(d.monthsLabels,  '[]');
+    const monthsData    = safeJSON(d.monthsData,    '[]');
+    const revenueLabels = safeJSON(d.revenueLabels, '[]');
+    const revenueData   = safeJSON(d.revenueData,   '[]');
+    const teacherLabels = safeJSON(d.teacherLabels, '[]');
+    const teacherData   = safeJSON(d.teacherData,   '[]');
+    const subjectLabels = safeJSON(d.subjectLabels, '[]');
+    const subjectData   = safeJSON(d.subjectData,   '[]');
 
     // Читаем CSS-переменные текущей темы
     const style  = getComputedStyle(document.documentElement);
