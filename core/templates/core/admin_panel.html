@@ -193,7 +193,7 @@
                     </div>
                 </div>
                 <div class="price-actions">
-                    <form onsubmit="ajaxForm(event, this)" style="display:flex;gap:6px;align-items:center;">
+                    <form onsubmit="updateColor(event, this)" style="display:flex;gap:6px;align-items:center;">
                         {% csrf_token %}
                         <input type="hidden" name="subject_id" value="{{ sub.id }}">
                         <input type="color" name="new_color" value="{{ sub.color }}"
@@ -216,9 +216,7 @@
     <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
     <div class="card">
         <h2>🔗 Назначить ученика учителям</h2>
-        <form onsubmit="ajaxForm(event, this)">
-            {% csrf_token %}
-            <div class="assign-form">
+        <form onsubmit="ajaxForm(event, this)" data-action="assign_student">
                 <div>
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
                     <select name="student_id" required>
@@ -263,7 +261,7 @@
 <div class="card full">
     <h2>💰 Индивидуальные ставки учителей</h2>
     <div class="rates-form">
-        <form onsubmit="ajaxForm(event, this)" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+        <form onsubmit="ajaxForm(event, this)" data-action="set_rate" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
             {% csrf_token %}
             <select name="teacher_id" required>
                 <option value="">— Учитель —</option>
@@ -298,7 +296,7 @@
 <script>
 const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-// ── Тост ──────────────────────────────────────
+// ── Тост ───────────────────────────────────────
 function showToast(msg, isError = false) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -308,35 +306,12 @@ function showToast(msg, isError = false) {
     t._timer = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── Универсальный AJAX submit ───────────────────
-async function ajaxForm(event, form) {
-    event.preventDefault();
-    const data = new FormData(form);
-
-    // Найти какая кнопка была нажата
-    const submitBtn = form.querySelector('[type="submit"]');
-    const actionName = submitBtn?.name;
-    if (actionName) data.append(actionName, '1');
-
-    try {
-        const resp = await fetch('/admin-panel/', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
-            body: data
-        });
-        const json = await resp.json();
-        if (json.status === 'ok') {
-            showToast('✓ Сохранено');
-            form.reset();
-        } else {
-            showToast('Ошибка', true);
-        }
-    } catch(e) {
-        showToast('Ошибка соединения', true);
-    }
+// ── Форматировать число как цену: 900 → "900.00" ──
+function formatPrice(val) {
+    return parseFloat(val).toFixed(2);
 }
 
-// ── Создать учителя ─────────────────────────────
+// ── Создать учителя ────────────────────────────
 document.getElementById('createTeacherForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -361,9 +336,8 @@ document.getElementById('createTeacherForm').addEventListener('submit', async (e
                     <div class="item-name">${displayName}</div>
                     <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
                 </div>
-                <button class="btn-del" onclick="deleteUser(${json.id}, 'teacher-${json.id}')">Удалить</button>
+                <button class="btn-del" data-user-id="${json.id}" data-elem-id="teacher-${json.id}" onclick="deleteUser(this)">Удалить</button>
             `;
-            // Убрать "нет учителей" если было
             list.querySelector('p')?.remove();
             list.appendChild(item);
             form.reset();
@@ -371,7 +345,7 @@ document.getElementById('createTeacherForm').addEventListener('submit', async (e
     } catch(e) { showToast('Ошибка', true); }
 });
 
-// ── Создать ученика ─────────────────────────────
+// ── Создать ученика ────────────────────────────
 document.getElementById('createStudentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -396,7 +370,7 @@ document.getElementById('createStudentForm').addEventListener('submit', async (e
                     <div class="item-name">${displayName}</div>
                     <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
                 </div>
-                <button class="btn-del" onclick="deleteUser(${json.id}, 'student-${json.id}')">Удалить</button>
+                <button class="btn-del" data-user-id="${json.id}" data-elem-id="student-${json.id}" onclick="deleteUser(this)">Удалить</button>
             `;
             list.querySelector('p')?.remove();
             list.appendChild(item);
@@ -420,13 +394,12 @@ document.getElementById('createSubjectForm').addEventListener('submit', async (e
         const json = await resp.json();
         if (json.status === 'ok') {
             showToast('✓ Направление добавлено');
-            // Перезагружаем только список — простейший способ обновить цены/формы
             location.reload();
         }
     } catch(e) { showToast('Ошибка', true); }
 });
 
-// ── Удалить пользователя ────────────────────────
+// ── Удалить пользователя ───────────────────────
 async function deleteUser(btn) {
     const userId = btn.dataset.userId;
     const elemId = btn.dataset.elemId;
@@ -444,17 +417,13 @@ async function deleteUser(btn) {
         const json = await resp.json();
         if (json.status === 'ok') {
             const el = document.getElementById(elemId);
-            if (el) {
-                el.style.opacity = '0';
-                el.style.transition = 'opacity 0.3s';
-                setTimeout(() => el.remove(), 300);
-            }
+            if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
             showToast('✓ Удалено');
         }
     } catch(e) { showToast('Ошибка', true); }
 }
 
-// ── Удалить направление ─────────────────────────
+// ── Удалить направление ────────────────────────
 async function deleteSubject(btn) {
     const subjectId = btn.dataset.subjectId;
     if (!confirm('Удалить направление?')) return;
@@ -471,20 +440,27 @@ async function deleteSubject(btn) {
         const json = await resp.json();
         if (json.status === 'ok') {
             const el = document.getElementById(`subject-${subjectId}`);
-            if (el) {
-                el.style.opacity = '0';
-                el.style.transition = 'opacity 0.3s';
-                setTimeout(() => el.remove(), 300);
-            }
+            if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
             showToast('✓ Направление удалено');
         }
     } catch(e) { showToast('Ошибка', true); }
 }
 
 // ── Обновить цену направления ──────────────────
+// БАГ а): запретить пустое значение, форматировать как 900.00
 async function updatePrice(event, form) {
     event.preventDefault();
     const subjectId = form.dataset.subjectId;
+    const priceInput = form.querySelector('input[name="new_price"]');
+    const priceVal = priceInput.value.trim();
+
+    // Запрет пустого значения и нуля
+    if (!priceVal || parseFloat(priceVal) <= 0) {
+        showToast('Введите корректную цену', true);
+        priceInput.focus();
+        return;
+    }
+
     const data = new FormData(form);
     data.append('update_price', '1');
     try {
@@ -495,15 +471,161 @@ async function updatePrice(event, form) {
         });
         const json = await resp.json();
         if (json.status === 'ok') {
-            // Обновляем тег с ценой без перезагрузки
             const tag = document.getElementById(`price-tag-${subjectId}`);
-            if (tag) tag.textContent = json.new_price + ' ₽';
+            // БАГ а): всегда показываем с сотыми (900 → "900.00 ₽")
+            if (tag) tag.textContent = formatPrice(json.new_price) + ' ₽';
+            // Обновляем и поле ввода чтобы тоже показывало 900.00
+            priceInput.value = formatPrice(json.new_price);
             showToast('✓ Цена обновлена');
+            // БАГ а): пересортировать направления по цене
+            sortSubjectsByPrice();
         }
     } catch(e) { showToast('Ошибка', true); }
 }
 
-// ── Профиль администратора ──────────────────────
+// ── БАГ а): сортировка направлений по цене ─────
+function sortSubjectsByPrice() {
+    const list = document.getElementById('subjectsList');
+    if (!list) return;
+    const rows = Array.from(list.querySelectorAll('.price-row'));
+    rows.sort((a, b) => {
+        const priceA = parseFloat(a.querySelector('.tag-price')?.textContent || '0');
+        const priceB = parseFloat(b.querySelector('.tag-price')?.textContent || '0');
+        return priceA - priceB;
+    });
+    rows.forEach(r => list.appendChild(r));
+}
+
+// ── БАГ а): обновление цвета без перезагрузки ──
+async function updateColor(event, form) {
+    event.preventDefault();
+    const subjectId = form.querySelector('input[name="subject_id"]').value;
+    const colorVal  = form.querySelector('input[name="new_color"]').value;
+    const data = new FormData(form);
+    data.append('update_color', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            // Обновляем цвет квадратика сразу
+            form.querySelector('input[name="new_color"]').style.outline = `3px solid ${colorVal}`;
+            showToast('✓ Цвет обновлён');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── БАГ б): назначение ученика + обновление таблицы без перезагрузки ──
+document.querySelector('form[data-action="assign_student"]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('assign_student', '1');
+
+    const studentSelect = form.querySelector('select[name="student_id"]');
+    const studentName   = studentSelect.options[studentSelect.selectedIndex]?.text || '';
+    const checkedTeachers = Array.from(form.querySelectorAll('input[name="teacher_ids"]:checked'));
+
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Назначения сохранены');
+
+            // Удаляем старые строки этого ученика из таблицы
+            const tbody = document.getElementById('assignTable');
+            Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                if (tr.querySelector('td')?.textContent?.trim() === studentName) tr.remove();
+            });
+            // Убираем "нет назначений"
+            tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
+
+            // Добавляем новые строки
+            if (checkedTeachers.length === 0) {
+                // Если не выбрано ни одного учителя — показать "нет" если таблица пустая
+                if (!tbody.querySelector('tr')) {
+                    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>';
+                }
+            } else {
+                checkedTeachers.forEach(cb => {
+                    const label = cb.closest('label');
+                    const teacherName = label ? label.textContent.trim() : '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td style="font-weight:600;">${studentName}</td><td style="color:var(--muted2);">${teacherName}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+            form.reset();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── БАГ в): ставки учителей + обновление таблицы без перезагрузки ──
+document.querySelector('form[data-action="set_rate"]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+
+    const teacherSelect = form.querySelector('select[name="teacher_id"]');
+    const subjectSelect = form.querySelector('select[name="subject_id"]');
+    const rateInput     = form.querySelector('input[name="rate"]');
+
+    const teacherName = teacherSelect.options[teacherSelect.selectedIndex]?.text || '';
+    const subjectName = subjectSelect.options[subjectSelect.selectedIndex]?.text || '';
+    const rateVal     = rateInput.value.trim();
+
+    if (!rateVal || parseFloat(rateVal) <= 0) {
+        showToast('Введите ставку', true);
+        rateInput.focus();
+        return;
+    }
+
+    const data = new FormData(form);
+    data.append('set_rate', '1');
+
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Ставка назначена');
+            const tbody = document.getElementById('ratesTable');
+            tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
+
+            // БАГ в): если такая пара учитель+предмет уже есть — обновляем, иначе добавляем
+            let updated = false;
+            Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                if (tds[0]?.textContent?.trim() === teacherName &&
+                    tds[1]?.textContent?.trim() === subjectName) {
+                    tds[2].textContent = formatPrice(rateVal) + ' ₽';
+                    updated = true;
+                }
+            });
+            if (!updated) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600;">${teacherName}</td>
+                    <td>${subjectName}</td>
+                    <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">${formatPrice(rateVal)} ₽</td>
+                `;
+                tbody.appendChild(tr);
+            }
+            form.reset();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── Профиль администратора ─────────────────────
 async function saveAdminProfile() {
     const fullname = document.getElementById('adminFullnameInput').value.trim();
     if (!fullname) { showToast('Введите ФИО', true); return; }
@@ -524,5 +646,15 @@ async function saveAdminProfile() {
         }
     } catch(e) { showToast('Ошибка', true); }
 }
+
+// ── При загрузке: отформатировать все цены как X.XX ──
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.tag-price').forEach(tag => {
+        const val = parseFloat(tag.textContent);
+        if (!isNaN(val)) tag.textContent = formatPrice(val) + ' ₽';
+    });
+    // Начальная сортировка по цене
+    sortSubjectsByPrice();
+});
 </script>
 {% endblock %}

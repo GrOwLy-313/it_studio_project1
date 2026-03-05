@@ -459,14 +459,28 @@ def admin_panel_view(request):
 
         elif 'update_price' in request.POST:
             subject_id = request.POST.get('subject_id')
-            new_price = request.POST.get('new_price')
+            new_price = request.POST.get('new_price', '').strip()
+            # Запрет пустого значения и нуля
             if subject_id and new_price:
-                Subject.objects.filter(id=subject_id).update(
-                    price_per_lesson=Decimal(new_price)
-                )
+                try:
+                    price_decimal = Decimal(new_price)
+                    if price_decimal <= 0:
+                        if is_ajax:
+                            return JsonResponse({'status': 'error', 'message': 'Цена должна быть больше нуля'})
+                        return redirect('admin_panel')
+                    Subject.objects.filter(id=subject_id).update(price_per_lesson=price_decimal)
+                    formatted = f"{price_decimal:.2f}"
+                except Exception:
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': 'Некорректная цена'})
+                    return redirect('admin_panel')
+            else:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Введите цену'})
+                return redirect('admin_panel')
             if is_ajax:
                 return JsonResponse({'status': 'ok', 'action': 'update_price',
-                                     'subject_id': subject_id, 'new_price': new_price})
+                                     'subject_id': subject_id, 'new_price': formatted})
             return redirect('admin_panel')
 
         elif 'update_color' in request.POST:
@@ -508,7 +522,7 @@ def admin_panel_view(request):
         return redirect('admin_panel')
 
     return render(request, 'core/admin_panel.html', {
-        'subjects': Subject.objects.all(),
+        'subjects': Subject.objects.all().order_by('price_per_lesson'),
         'students': User.objects.filter(role='student'),
         'teachers': User.objects.filter(role='teacher'),
         'rates': TeacherRate.objects.all(),
