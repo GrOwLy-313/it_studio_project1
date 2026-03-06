@@ -1017,10 +1017,16 @@ def dashboard_view(request):
     return render(request, 'core/dashboard.html', {
         'total_students': total_students,
         'total_teachers': total_teachers,
-        'revenue_total':  revenue_total,
+        'total_lessons':  done_lessons,
+        'revenue_total':  int(revenue_total),  # int чтобы floatformat:0 не давал пустоту на Decimal
         'done_lessons':   done_lessons,
         'sched_lessons':  sched_lessons,
         'cancel_lessons': cancel_lessons,
+        'status_counts': {
+            'done':      done_lessons,
+            'scheduled': sched_lessons,
+            'canceled':  cancel_lessons,
+        },
         'months_labels':  json.dumps(months_labels,  ensure_ascii=False),
         'months_data':    json.dumps(months_data),
         'revenue_labels': json.dumps(revenue_labels, ensure_ascii=False),

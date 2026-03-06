@@ -1,697 +1,664 @@
 {% extends 'core/base.html' %}
 {% load static %}
-{% load note_extras %}
 
-{% block title %}Расписание — ITишник{% endblock %}
-{% block nav_calendar %}active{% endblock %}
+{% block title %}Управление — ITишник{% endblock %}
+{% block nav_admin %}active{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ВКЛАДКИ */
-    .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 24px; width: fit-content; }
-    .tab-btn { padding: 9px 24px; border-radius: 9px; border: none; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--muted2); background: transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-    .tab-btn:hover { color: var(--text); }
-    .tab-btn.active { background: var(--accent); color: white; box-shadow: 0 2px 12px rgba(59,130,246,0.35); }
-    .tab-btn.archive-active { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
-    .tab-btn.archive-active.active { background: rgba(245,158,11,0.15); color: var(--yellow); border-color: rgba(245,158,11,0.3); box-shadow: 0 2px 12px rgba(245,158,11,0.15); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .full { grid-column: 1/-1; }
 
-    /* БЛОК ПОМЕТОК УЧЕНИКОВ */
-    .notes-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
-    .notes-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.2s; user-select: none; }
-    .notes-header.open { border-bottom-color: var(--border); }
-    .notes-header-left { display: flex; align-items: center; gap: 10px; }
-    .notes-header-left span { font-size: 15px; font-weight: 700; }
-    .notes-header-left small { font-size: 12px; color: var(--muted); font-weight: 500; }
-    .notes-chevron { font-size: 12px; color: var(--muted); transition: transform 0.25s; display: inline-block; }
-    .notes-chevron.open { transform: rotate(180deg); }
-    .notes-body { display: none; padding: 16px 20px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .notes-body.open { display: grid; }
-    .note-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; transition: border-color 0.2s; }
-    .note-card:hover { border-color: var(--accent); }
-    .note-card-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
-    .note-card-login { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
-    .note-input-wrap { display: flex; gap: 6px; align-items: center; }
-    .note-input { flex: 1; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-family: 'Manrope', sans-serif; font-size: 12px; outline: none; transition: border-color 0.2s; }
-    .note-input:focus { border-color: var(--accent); }
-    .note-input::placeholder { color: var(--muted); }
-    .btn-note-save { padding: 7px 10px; background: var(--accent); border: none; border-radius: 7px; color: white; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s; font-family: 'Manrope', sans-serif; }
-    .btn-note-save:hover { background: #2563eb; }
-    .note-saved-badge { font-size: 11px; color: var(--green); font-weight: 700; margin-top: 6px; display: none; }
+    .card { padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 15px; font-weight: 700; color: var(--accent2); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 
-    /* Архивный баннер */
-    .archive-banner { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--yellow); font-weight: 600; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+    .form-group input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 14px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-group input::placeholder { color: var(--muted); }
 
-    /* TOOLBAR */
-    .toolbar { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; transition: background 0.3s, border-color 0.3s; }
-    .toolbar-form { display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap; }
-    .toolbar-group { display: flex; align-items: center; gap: 8px; }
-    .toolbar-label { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
-    .toolbar-select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-family: 'Manrope', sans-serif; font-size: 13px; outline: none; transition: border-color 0.2s, background 0.3s; height: 36px; }
-    .toolbar-select:focus { border-color: var(--accent); }
-    .toolbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
-    .toolbar-actions { display: flex; align-items: center; gap: 8px; }
-    .period-pills { display: flex; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .period-pill { padding: 6px 16px; border: none; background: transparent; color: var(--muted2); font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; border-right: 1px solid var(--border); }
-    .period-pill:last-child { border-right: none; }
-    .period-pill:hover { color: var(--text); background: rgba(255,255,255,0.04); }
-    .period-pill.active { background: var(--accent); color: white; }
-    [data-theme="light"] .period-pill:hover { background: rgba(0,0,0,0.04); }
-    .btn-filter { padding: 7px 14px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; height: 36px; }
-    .btn-filter:hover { background: #2563eb; }
-    .btn-reset { color: var(--muted); font-size: 13px; text-decoration: none; font-weight: 600; padding: 4px 8px; border-radius: 6px; transition: color 0.15s; }
-    .btn-reset:hover { color: var(--red); }
-    .btn-export { padding: 7px 14px; height: 36px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; color: var(--green); text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-    .btn-export:hover { background: rgba(16,185,129,0.2); }
-    .btn-add-jump { display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px; height: 36px; background: linear-gradient(135deg, var(--green), #059669); border-radius: 8px; color: white; text-decoration: none; font-size: 13px; font-weight: 700; box-shadow: 0 2px 10px rgba(16,185,129,0.25); transition: all 0.2s; white-space: nowrap; }
-    .btn-add-jump:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.4); }
+    .btn-green { padding: 10px 20px; background: linear-gradient(135deg, var(--green), #059669); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; }
+    .btn-green:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
+    .btn-blue { padding: 10px 20px; background: linear-gradient(135deg, var(--accent), #2563eb); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; }
+    .btn-blue:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.3); }
 
-    @media (max-width: 1100px) {
-        .toolbar { padding: 12px 14px; }
-        .toolbar-divider { display: none; }
-        .toolbar-form { gap: 8px; }
-        .toolbar-select { width: 100%; }
-        .btn-export { width: 100%; justify-content: center; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .list-item:last-child { border-bottom: none; }
+    .list-item .item-name { font-size: 14px; font-weight: 600; }
+    .list-item .item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .btn-del { padding: 5px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; }
+    .btn-del:hover { background: rgba(239,68,68,0.2); }
+
+    .price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .price-row:last-child { border-bottom: none; }
+    .price-info .p-name { font-size: 14px; font-weight: 600; }
+    .price-info .p-tags { margin-top: 4px; display: flex; gap: 6px; }
+    .tag-universal { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25); color: var(--accent2); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .tag-price { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .price-actions { display: flex; gap: 6px; align-items: center; }
+    .price-actions input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none; width: 100px; }
+    .btn-price { padding: 6px 12px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: 'Manrope', sans-serif; }
+    .btn-price:hover { background: rgba(59,130,246,0.2); }
+
+    .assign-form { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 20px; }
+    .assign-form select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 14px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; min-width: 180px; }
+    .checkboxes { display: flex; flex-direction: column; gap: 8px; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; color: var(--muted2); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .checkbox-item input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+    .rates-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .rates-form select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-family: 'Manrope', sans-serif; font-size: 13px; outline: none; flex: 1; min-width: 140px; }
+    .rates-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; width: 120px; }
+    .btn-set { padding: 9px 18px; background: linear-gradient(135deg, var(--accent), #2563eb); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+    .assign-table { width: 100%; border-collapse: collapse; }
+    .assign-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .assign-table td { padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    .assign-table tr:last-child td { border-bottom: none; }
+
+    /* Тост уведомление */
+    .toast {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        background: var(--green); color: white;
+        padding: 12px 20px; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+        transform: translateY(80px); opacity: 0;
+        transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        pointer-events: none;
     }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: var(--red); box-shadow: 0 4px 20px rgba(239,68,68,0.4); }
 
-    /* TABLE */
-    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
-
-    /* DATE CELL */
-    .date-cell .day { font-weight: 800; color: var(--accent); font-size: 15px; text-transform: capitalize; letter-spacing: 0.2px; }
-    .date-cell .datetime { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); margin-top: 3px; }
-    .rescheduled { font-size: 11px; color: var(--yellow); margin-top: 4px; }
-
-    /* STATUS */
-    .status-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; outline: none; width: 100%; transition: border-color 0.2s, background 0.3s; }
-    .status-select:hover { border-color: var(--accent); }
-
-    /* RESCHEDULE */
-    .reschedule-form { margin-top: 10px; display: flex; gap: 6px; align-items: center; }
-    .reschedule-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; font-size: 12px; font-family: 'Manrope', sans-serif; outline: none; transition: background 0.3s, border-color 0.3s; }
-    .btn-reschedule { padding: 6px 10px; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); border-radius: 6px; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-    .btn-reschedule:hover { background: rgba(59,130,246,0.25); }
-    .btn-delete-lesson { display: inline-block; margin-top: 8px; padding: 5px 10px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; text-decoration: none; transition: all 0.2s; cursor: pointer; font-family: 'Manrope', sans-serif; }
-    .btn-delete-lesson:hover { background: rgba(239,68,68,0.15); }
-
-    /* CONFLICT */
-    .conflict-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; color: #fca5a5; font-size: 14px; font-weight: 600; }
-
-    /* ADD FORM */
-    .add-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 24px; transition: background 0.3s, border-color 0.3s; }
-    .add-form-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
-    .form-row { display: grid; gap: 14px; margin-bottom: 14px; }
-    .form-row-main { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
-    .form-group select, .form-group input[type="datetime-local"], .form-group input[type="number"] { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s, background 0.3s; min-height: 44px; width: 100%; }
-    .form-group select:focus, .form-group input:focus { border-color: var(--accent); }
-    .form-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .btn-create { padding: 11px 20px; background: linear-gradient(135deg, var(--green), #059669); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; min-height: 44px; }
-    .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
-
-    /* PAGINATION */
-    .pagination-wrap { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    .pagination { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-    .page-btn { padding: 8px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); color: var(--muted2); text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.15s; min-width: 40px; text-align: center; font-family: 'Manrope', sans-serif; }
-    .page-btn:hover:not(.disabled):not(.active) { border-color: var(--accent); color: var(--accent); }
-    .page-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-    .page-btn.disabled { opacity: 0.4; cursor: default; }
-    .pagination-info { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
-
-    /* pills */
-    .subject-pill { display: inline-block; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
-    .subject-pill-colored { background: transparent; border: 1px solid var(--pill-color, var(--accent)); position: relative; overflow: hidden; color: var(--pill-color, var(--accent)); }
-    .subject-pill-colored::before { content: ''; position: absolute; inset: 0; background: var(--pill-color, var(--accent)); opacity: 0.12; pointer-events: none; }
-    .row-colored { border-left: 3px solid var(--row-color, var(--accent)); }
-    .chat-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.25); border-radius: 8px; color: var(--accent2); text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.2s; min-height: 36px; white-space: nowrap; }
-    .chat-btn:hover { background: rgba(6,182,212,0.2); }
-    .archive-row { opacity: 0.82; }
-    .archive-row:hover { opacity: 1; }
-
-    /* MOBILE CARDS */
-    .lesson-cards { display: none; flex-direction: column; gap: 12px; }
-    .lesson-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; border-left: 4px solid var(--card-color, var(--accent)); transition: background 0.3s, border-color 0.3s; }
-    .lc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-    .lc-date .lc-day { font-weight: 800; color: var(--accent); font-size: 15px; }
-    .lc-date .lc-dt { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); margin-top: 3px; }
-    .lc-date .lc-moved { font-size: 11px; color: var(--yellow); margin-top: 4px; }
-    .lc-body { display: flex; flex-direction: column; gap: 10px; }
-    .lc-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .lc-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 70px; }
-    .lc-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .lc-actions .status-select { width: 100%; }
-    .lc-actions .reschedule-form { flex-wrap: wrap; }
-    .lc-actions .reschedule-form input { flex: 1; min-width: 160px; }
-    .lc-actions .btn-reschedule, .lc-actions .btn-delete-lesson { width: 100%; text-align: center; justify-content: center; padding: 10px; }
-
-    @media (max-width: 1100px) {
-        .table-wrap table { display: none; }
-        .lesson-cards { display: flex; }
-        .tabs { width: 100%; }
-        .tab-btn { flex: 1; justify-content: center; }
-        .add-form-card { padding: 18px 16px; }
-        .notes-body { grid-template-columns: 1fr; }
+    /* Профиль админа */
+    .admin-profile-card {
+        background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.08));
+        border: 1px solid rgba(59,130,246,0.2);
+        border-radius: 14px; padding: 20px 24px; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 16px;
     }
-    @media (max-width: 600px) { .form-row-main { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) { .lc-top { flex-direction: column; gap: 6px; } }
+    .admin-avatar {
+        width: 52px; height: 52px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 800; color: white; flex-shrink: 0;
+    }
+    .admin-profile-info { flex: 1; }
+    .admin-profile-info .a-name { font-size: 16px; font-weight: 700; }
+    .admin-profile-info .a-login { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .admin-edit-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .admin-edit-row input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; flex: 1; transition: border-color 0.2s; }
+    .admin-edit-row input:focus { border-color: var(--accent); }
+    .btn-save-admin { padding: 8px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- ТОСТ -->
+<div class="toast" id="toast"></div>
+
 <div class="page-header">
-    <h1>📅 Расписание занятий</h1>
-    <p>{% if is_archive %}Архив прошедших занятий{% elif user.role == 'student' %}Ваши предстоящие занятия{% elif user.role == 'teacher' %}Ваши занятия и ученики{% else %}Все занятия студии{% endif %}</p>
+    <h1>⚙️ Управление студией</h1>
+    <p>Пользователи, направления, ставки и назначения</p>
 </div>
 
-<!-- ВКЛАДКИ -->
-<div class="tabs">
-    <a href="{% url 'calendar' %}" class="tab-btn {% if not is_archive %}active{% endif %}">📅 Расписание</a>
-    {% if user.role != 'student' %}
-    <a href="{% url 'archive' %}" class="tab-btn archive-active {% if is_archive %}active{% endif %}">🗂 Архив</a>
-    {% endif %}
-</div>
-
-<!-- ПОМЕТКИ УЧЕНИКОВ (учитель/админ, только расписание) -->
-{% if not is_archive and user.role != 'student' and students %}
-<div class="notes-section" id="notesSection">
-    <div class="notes-header" id="notesToggle" onclick="toggleNotes()">
-        <div class="notes-header-left">
-            <span>🏷 Пометки об учениках</span>
-            <small>видны только вам</small>
+<!-- БАГ 4: Профиль администратора -->
+<div class="admin-profile-card">
+    <div class="admin-avatar">{{ user.username|first|upper }}</div>
+    <div class="admin-profile-info">
+        <div class="a-name" id="adminDisplayName">
+            {% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}
         </div>
-        <span class="notes-chevron" id="notesChevron">▼</span>
-    </div>
-    <div class="notes-body" id="notesBody">
-        {% for student in students %}
-        <div class="note-card">
-            <div class="note-card-name">{{ student.get_display_name }}</div>
-            <div class="note-card-login">{{ student.username }}</div>
-            <div class="note-input-wrap">
-                <input
-                    type="text"
-                    class="note-input"
-                    data-student-id="{{ student.id }}"
-                    data-display-name="{{ student.get_display_name }}"
-                    value="{% if student_notes %}{% for k,v in student_notes.items %}{% if k == student.id %}{{ v }}{% endif %}{% endfor %}{% endif %}"
-                    placeholder="Добавить пометку…"
-                    maxlength="120"
-                >
-                <button class="btn-note-save" data-student-id="{{ student.id }}" onclick="saveNote(this)">✓</button>
-            </div>
-            <div class="note-saved-badge" id="note-badge-{{ student.id }}">✓ Сохранено</div>
+        <div class="a-login">логин: {{ user.username }}</div>
+        <div class="admin-edit-row">
+            <input type="text" id="adminFullnameInput"
+                   value="{% if user.first_name %}{{ user.first_name }}{% endif %}"
+                   placeholder="Ваше ФИО (отображается везде в системе)">
+            <button class="btn-save-admin" onclick="saveAdminProfile()">Сохранить</button>
         </div>
-        {% endfor %}
     </div>
 </div>
-{% endif %}
 
-<!-- TOOLBAR -->
-{% if is_archive %}
-<div class="archive-banner">🗂 Показаны занятия старше 3 дней</div>
-<div class="toolbar">
-    <form method="get" class="toolbar-form">
-        {% if user.role == 'admin' %}
-        <div class="toolbar-group">
-            <span class="toolbar-label">👨‍🏫 Учитель</span>
-            <select name="teacher_filter" class="toolbar-select">
-                <option value="">— Все —</option>
-                {% for t in teachers %}<option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
-            </select>
-        </div>
-        {% endif %}
-        <div class="toolbar-group">
-            <span class="toolbar-label">📅 Месяц</span>
-            <input type="month" name="month" value="{{ month_filter }}" class="toolbar-select">
-        </div>
-        <div class="toolbar-actions">
-            <button type="submit" class="btn-filter">Применить</button>
-            {% if request.GET.teacher_filter or request.GET.month %}<a href="{% url 'archive' %}" class="btn-reset">✕ Сбросить</a>{% endif %}
-        </div>
-    </form>
-    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>{% endif %}
-</div>
-{% else %}
-<div class="toolbar">
-    <form method="get" class="toolbar-form">
-        {% if request.GET.teacher_filter %}<input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">{% endif %}
-        {% if user.role == 'admin' %}
-        <div class="toolbar-group">
-            <span class="toolbar-label">👨‍🏫 Учитель</span>
-            <select name="teacher_filter" class="toolbar-select">
-                <option value="">— Все учителя —</option>
-                {% for t in teachers %}<option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
-            </select>
-        </div>
-        <div class="toolbar-divider"></div>
-        {% endif %}
-        <div class="toolbar-group">
-            <span class="toolbar-label">📆 Период</span>
-            <div class="period-pills">
-                <button type="submit" name="period" value="all"   class="period-pill {% if period_filter == 'all' %}active{% endif %}">Все</button>
-                <button type="submit" name="period" value="week"  class="period-pill {% if period_filter == 'week' %}active{% endif %}">Неделя</button>
-                <button type="submit" name="period" value="month" class="period-pill {% if period_filter == 'month' %}active{% endif %}">Месяц</button>
+<div class="grid-2">
+
+    <!-- УЧИТЕЛЯ -->
+    <div class="card">
+        <h2>👨‍🏫 Учителя</h2>
+        <form id="createTeacherForm" data-action="create_teacher">
+            {% csrf_token %}
+            <div class="form-group"><label>Логин</label><input type="text" name="teacher_username" placeholder="Логин для входа" required></div>
+            <div class="form-group"><label>ФИО</label><input type="text" name="teacher_fullname" placeholder="Иванов Иван Иванович"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" name="teacher_password" placeholder="Пароль" required></div>
+            <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
+        </form>
+        <div style="margin-top:20px;" id="teachersList">
+            {% for t in teachers %}
+            <div class="list-item" id="teacher-{{ t.id }}">
+                <div>
+                    <div class="item-name">{% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">{{ t.username }}</div>
+                </div>
+                <button class="btn-del" data-user-id="{{ t.id }}" data-elem-id="teacher-{{ t.id }}" onclick="deleteUser(this)">Удалить</button>
             </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учителей пока нет</p>{% endfor %}
         </div>
-        {% if user.role == 'admin' and request.GET.teacher_filter %}
-        <div class="toolbar-actions"><a href="{% url 'calendar' %}" class="btn-reset">✕ Сбросить</a></div>
-        {% endif %}
-    </form>
-    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
-    {% if user.role != 'student' %}<a href="#add-lesson-form" class="btn-add-jump">➕ Добавить занятие</a>{% endif %}
-</div>
-{% endif %}
+    </div>
 
-<!-- ТАБЛИЦА (десктоп) -->
-<div class="table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>Дата и время</th>
-                {% if user.role != 'student' %}<th>Направление</th>{% endif %}
-                <th>{% if user.role == 'admin' %}Учитель / Ученик{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</th>
-                <th>Статус</th>
-                {% if not is_archive %}<th>Связь</th>{% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for lesson in lessons %}
-            <tr class="{% if is_archive %}archive-row{% endif %}" data-color="{{ lesson.subject.color }}">
-                <td>
-                    <div class="date-cell">
-                        <div class="day">{{ lesson.date_time|date:"l" }}</div>
-                        <div class="datetime">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
-                        {% if lesson.original_date_time %}
-                        <div class="rescheduled">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
-                        {% endif %}
+    <!-- УЧЕНИКИ -->
+    <div class="card">
+        <h2>🎓 Ученики</h2>
+        <form id="createStudentForm" data-action="create_student">
+            {% csrf_token %}
+            <div class="form-group"><label>Логин</label><input type="text" name="username" placeholder="Логин для входа" required></div>
+            <div class="form-group"><label>ФИО</label><input type="text" name="student_fullname" placeholder="Петров Пётр Петрович"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" name="password" placeholder="Пароль" required></div>
+            <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
+        </form>
+        <div style="margin-top:20px;" id="studentsList">
+            {% for s in students %}
+            <div class="list-item" id="student-{{ s.id }}">
+                <div>
+                    <div class="item-name">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">{{ s.username }}</div>
+                </div>
+                <button class="btn-del" data-user-id="{{ s.id }}" data-elem-id="student-{{ s.id }}" onclick="deleteUser(this)">Удалить</button>
+            </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учеников пока нет</p>{% endfor %}
+        </div>
+    </div>
+
+    <!-- НАПРАВЛЕНИЯ -->
+    <div class="card">
+        <h2>📖 Направления</h2>
+        <form id="createSubjectForm" data-action="create_subject">
+            {% csrf_token %}
+            <div class="form-group"><label>Название курса</label><input type="text" name="name" placeholder="Например: Python, Робототехника" required></div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" name="is_universal" style="accent-color:var(--accent);width:auto;">
+                    Доступно всем учителям (пробное занятие)
+                </label>
+            </div>
+            <button type="submit" name="create_subject" class="btn-blue">+ Добавить направление</button>
+        </form>
+        <div style="margin-top:20px;" id="subjectsList">
+            {% for sub in subjects %}
+            <div class="price-row" id="subject-{{ sub.id }}">
+                <div class="price-info">
+                    <div class="p-name">{{ sub.name }}</div>
+                    <div class="p-tags">
+                        {% if sub.is_universal %}<span class="tag-universal">🌐 Для всех</span>{% endif %}
+                        <span class="tag-price" id="price-tag-{{ sub.id }}">{{ sub.price_per_lesson }} ₽</span>
                     </div>
-                </td>
-                {% if user.role != 'student' %}<td><span class="subject-pill">{{ lesson.subject.name }}</span></td>{% endif %}
-                <td style="font-weight:600;">
-                    {% if user.role == 'student' %}
-                        {{ lesson.teacher.get_display_name }}
-                    {% elif user.role == 'admin' %}
-                        <div>👨‍🏫 {{ lesson.teacher.get_display_name }}</div>
-                        <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.get_display_name }}</div>
-                    {% else %}
-                        {# Учитель — пометка если есть #}
-                        <span class="student-display"
-                              data-student-id="{{ lesson.student.id }}"
-                              data-display-name="{{ lesson.student.get_display_name }}">
-                            {% if student_notes %}
-                                {% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}
-                                {% if not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
-                            {% else %}
-                                {{ lesson.student.get_display_name }}
-                            {% endif %}
-                        </span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if not is_archive and user.role in 'teacher admin' %}
-                    <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
-                        <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
-                            <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
-                            <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
-                            <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
+                </div>
+                <div class="price-actions">
+                    <form onsubmit="updateColor(event, this)" style="display:flex;gap:6px;align-items:center;">
+                        {% csrf_token %}
+                        <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                        <input type="color" name="new_color" value="{{ sub.color }}"
+                            style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
+                        <button type="submit" name="update_color" class="btn-price">Цвет</button>
+                    </form>
+                    <form onsubmit="updatePrice(event, this)" data-subject-id="{{ sub.id }}" style="display:flex;gap:6px;align-items:center;">
+                        {% csrf_token %}
+                        <input type="hidden" name="subject_id" value="{{ sub.id }}">
+                        <input type="number" name="new_price" value="{{ sub.price_per_lesson }}">
+                        <button type="submit" name="update_price" class="btn-price">Изменить</button>
+                    </form>
+                    <button class="btn-del" data-subject-id="{{ sub.id }}" onclick="deleteSubject(this)">✕</button>
+                </div>
+            </div>
+            {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Направлений пока нет</p>{% endfor %}
+        </div>
+    </div>
+
+    <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
+    <div class="card full">
+        <h2>🔗 Назначить ученика учителям</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+            <form onsubmit="ajaxForm(event, this)" data-action="assign_student">
+                {% csrf_token %}
+                <div class="assign-form">
+                    <div>
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
+                        <select name="student_id" required style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;width:100%;margin-bottom:16px;">
+                            <option value="">— Выберите ученика —</option>
+                            {% for s in students %}<option value="{{ s.id }}">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</option>{% endfor %}
                         </select>
-                        <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
-                            {% csrf_token %}
-                            <input type="datetime-local" name="new_date" required>
-                            <button type="submit" class="btn-reschedule">Перенести</button>
-                        </form>
-                        {% if user.role == 'admin' %}
-                        <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
-                        {% endif %}
                     </div>
-                    {% else %}
-                    <span class="status-badge status-{{ lesson.status }}">
-                        {% if lesson.status == 'scheduled' %}⏳ Запланирован{% elif lesson.status == 'done' %}✅ Проведён{% else %}❌ Отменён{% endif %}
-                    </span>
-                    {% endif %}
-                </td>
-                {% if not is_archive %}
-                <td>
-                    {% if user.role == 'student' %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
-                    {% else %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% endif %}
-                </td>
-                {% endif %}
+                    <div>
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Учителя</div>
+                        <div class="checkboxes">
+                            {% for t in teachers %}
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
+                                {% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" name="assign_student" class="btn-green" style="width:auto;padding:10px 24px;margin-top:16px;">💾 Сохранить назначения</button>
+            </form>
+            <div>
+                <table class="assign-table">
+                    <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
+                    <tbody id="assignTable">
+                        {% for ts in teacher_students %}
+                        <tr>
+                            <td style="font-weight:600;">{% if ts.student.first_name %}{{ ts.student.first_name }}{% else %}{{ ts.student.username }}{% endif %}</td>
+                            <td style="color:var(--muted2);">{% if ts.teacher.first_name %}{{ ts.teacher.first_name }}{% else %}{{ ts.teacher.username }}{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /grid-2 -->
+
+<!-- СТАВКИ -->
+<div class="card full">
+    <h2>💰 Индивидуальные ставки учителей</h2>
+    <div class="rates-form">
+        <form onsubmit="ajaxForm(event, this)" data-action="set_rate" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+            {% csrf_token %}
+            <select name="teacher_id" required>
+                <option value="">— Учитель —</option>
+                {% for t in teachers %}<option value="{{ t.id }}">{% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}</option>{% endfor %}
+            </select>
+            <select name="subject_id" required>
+                <option value="">— Предмет —</option>
+                {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+            <input type="number" name="rate" placeholder="Ставка ₽">
+            <button type="submit" name="set_rate" class="btn-set">Назначить ставку</button>
+        </form>
+    </div>
+    <table>
+        <thead><tr><th>Учитель</th><th>Предмет</th><th>Ставка за урок</th></tr></thead>
+        <tbody id="ratesTable">
+            {% for r in rates %}
+            <tr>
+                <td style="font-weight:600;">{% if r.teacher.first_name %}{{ r.teacher.first_name }}{% else %}{{ r.teacher.username }}{% endif %}</td>
+                <td>{{ r.subject.name }}</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
             </tr>
             {% empty %}
-            <tr class="empty-row"><td colspan="5">{% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}</td></tr>
+            <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-
-<!-- МОБИЛЬНЫЕ КАРТОЧКИ -->
-<div class="lesson-cards">
-    {% for lesson in lessons %}
-    <div class="lesson-card {% if is_archive %}archive-row{% endif %}" style="--card-color: {{ lesson.subject.color }}">
-        <div class="lc-top">
-            <div class="lc-date">
-                <div class="lc-day">{{ lesson.date_time|date:"l" }}</div>
-                <div class="lc-dt">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
-                {% if lesson.original_date_time %}
-                <div class="lc-moved">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
-                {% endif %}
-            </div>
-            {% if user.role != 'student' %}<span class="subject-pill subject-pill-colored" data-color="{{ lesson.subject.color }}">{{ lesson.subject.name }}</span>{% endif %}
-        </div>
-        <div class="lc-body">
-            <div class="lc-row">
-                <span class="lc-label">{% if user.role == 'admin' %}Участники{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</span>
-                <span style="font-weight:600;">
-                    {% if user.role == 'student' %}{{ lesson.teacher.get_display_name }}
-                    {% elif user.role == 'admin' %}👨‍🏫 {{ lesson.teacher.get_display_name }} &nbsp;·&nbsp; 🎓 {{ lesson.student.get_display_name }}
-                    {% else %}
-                        <span class="student-display"
-                              data-student-id="{{ lesson.student.id }}"
-                              data-display-name="{{ lesson.student.get_display_name }}">
-                            {% if student_notes %}{% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}{% endif %}
-                            {% if not student_notes or not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
-                        </span>
-                    {% endif %}
-                </span>
-            </div>
-            {% if is_archive or user.role == 'student' %}
-            <div class="lc-row">
-                <span class="lc-label">Статус</span>
-                <span class="status-badge status-{{ lesson.status }}">
-                    {% if lesson.status == 'scheduled' %}⏳ Запланирован{% elif lesson.status == 'done' %}✅ Проведён{% else %}❌ Отменён{% endif %}
-                </span>
-            </div>
-            {% endif %}
-            {% if not is_archive %}
-            <div class="lc-row">
-                <span class="lc-label">Связь</span>
-                {% if user.role == 'student' %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
-                {% else %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% endif %}
-            </div>
-            {% endif %}
-        </div>
-        {% if not is_archive and user.role in 'teacher admin' %}
-        <div class="lc-actions">
-            <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
-                <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
-                <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
-                <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
-            </select>
-            <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
-                {% csrf_token %}
-                <input type="datetime-local" name="new_date" required>
-                <button type="submit" class="btn-reschedule">📅 Перенести</button>
-            </form>
-            {% if user.role == 'admin' %}
-            <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-    {% empty %}
-    <div class="empty-state"><div class="big">{% if is_archive %}🗂{% else %}📭{% endif %}</div><p>{% if is_archive %}Архив пуст{% else %}Занятий пока нет{% endif %}</p></div>
-    {% endfor %}
-</div>
-
-<!-- ПАГИНАЦИЯ -->
-{% if page_obj.has_other_pages %}
-<div class="pagination-wrap">
-    <div class="pagination">
-        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">← Назад</a>{% else %}<span class="page-btn disabled">← Назад</span>{% endif %}
-        {% for num in page_obj.paginator.page_range %}
-            {% if page_obj.number == num %}<span class="page-btn active">{{ num }}</span>
-            {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}<a href="?page={{ num }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">{{ num }}</a>{% endif %}
-        {% endfor %}
-        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">Вперёд →</a>{% else %}<span class="page-btn disabled">Вперёд →</span>{% endif %}
-    </div>
-    <div class="pagination-info">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }} · всего {{ page_obj.paginator.count }} занятий</div>
-</div>
-{% endif %}
-
-<!-- ФОРМА ДОБАВЛЕНИЯ -->
-{% if not is_archive and user.role != 'student' %}
-<div class="add-form-card" id="add-lesson-form">
-    <h3>➕ Добавить новое занятие</h3>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-row form-row-main">
-            {% if user.role == 'admin' %}
-            <div class="form-group">
-                <label>Учитель</label>
-                <select name="teacher" required>
-                    <option value="">— Выберите —</option>
-                    {% for t in teachers %}<option value="{{ t.id }}">{{ t.get_display_name }}</option>{% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="form-group">
-                <label>Направление</label>
-                <select name="subject" required>
-                    <option value="">— Выберите —</option>
-                    {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Ученик</label>
-                <select name="student" id="studentSelect" required>
-                    <option value="">— Выберите —</option>
-                    {% for u in students %}
-                    <option value="{{ u.id }}" data-display-name="{{ u.get_display_name }}">
-                        {% if user.role == 'teacher' %}
-                            {% if student_notes %}
-                                {% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}
-                                {% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}
-                            {% else %}
-                                {{ u.get_display_name }}
-                            {% endif %}
-                        {% else %}
-                            {{ u.get_display_name }}
-                        {% endif %}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Дата и время</label>
-                <input type="datetime-local" id="lesson_date_time" name="date_time" required>
-            </div>
-            <div class="form-group">
-                <label>Повторений (недель)</label>
-                <input type="number" name="repeat_count" value="1" min="1" max="52">
-                <span class="form-hint">1 = разово, 4 = 4 недели подряд...</span>
-            </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-            {% if conflict_error %}<div class="conflict-error">{{ conflict_error }}</div>{% endif %}
-            <button type="submit" class="btn-create">✓ Создать занятие</button>
-        </div>
-    </form>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Цветовые метки
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('tr[data-color]').forEach(row => {
-            const color = row.dataset.color;
-            if (!color) return;
-            row.style.setProperty('--row-color', color);
-            row.classList.add('row-colored');
-            const pill = row.querySelector('.subject-pill');
-            if (pill) { pill.style.setProperty('--pill-color', color); pill.classList.add('subject-pill-colored'); }
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+// ── Тост ───────────────────────────────────────
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Форматировать число как цену: 900 → "900.00" ──
+function formatPrice(val) {
+    return parseFloat(val).toFixed(2);
+}
+
+// ── Создать учителя ────────────────────────────
+document.getElementById('createTeacherForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_teacher', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
         });
-        document.querySelectorAll('.lesson-card').forEach(card => {
-            const pill = card.querySelector('.subject-pill-colored[data-color]');
-            if (pill) pill.style.setProperty('--pill-color', pill.dataset.color);
-        });
-    });
-
-    const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-    // ── Удаление ─────────────────────────────────
-    async function deleteLesson(btn) {
-        if (!confirm('Удалить занятие?')) return;
-        const lessonId = btn.dataset.lessonId;
-        const row = btn.closest('tr') || btn.closest('.lesson-card');
-        if (row) row.style.opacity = '0.5';
-        try {
-            const resp = await fetch(`/lesson/delete/${lessonId}/`, {
-                method: 'POST', headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            if (resp.ok && row) {
-                row.style.transition = 'opacity 0.3s'; row.style.opacity = '0';
-                setTimeout(() => row.remove(), 300);
-            } else if (row) row.style.opacity = '1';
-        } catch(e) { if (row) row.style.opacity = '1'; }
-    }
-
-    // ── Статус ───────────────────────────────────
-    async function updateStatus(select) {
-        const lessonId = select.dataset.lessonId;
-        select.disabled = true;
-        try {
-            await fetch(`/lesson/${lessonId}/status/${select.value}/`, {
-                method: 'POST', headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
-            });
-        } catch(e) { alert('Ошибка соединения'); }
-        finally { select.disabled = false; }
-    }
-
-    // ── БАГ 6: Перенос ───────────────────────────
-    // Старую дату читаем ИЗ DOM прямо перед отправкой запроса.
-    // Это гарантирует что она всегда есть — независимо от ответа сервера.
-    async function rescheduleLesson(event, form) {
-        event.preventDefault();
-        const lessonId = form.dataset.lessonId;
-        const input    = form.querySelector('input[name="new_date"]');
-        const btn      = form.querySelector('button');
-        const origText = btn.textContent;
-
-        // Получаем текущую дату из DOM ДО отправки
-        const row  = form.closest('tr');
-        const card = form.closest('.lesson-card');
-        let oldDateText = '';
-        if (row) {
-            oldDateText = row.querySelector('.date-cell .datetime')?.textContent?.trim() || '';
-        } else if (card) {
-            oldDateText = card.querySelector('.lc-dt')?.textContent?.trim() || '';
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Учитель создан');
+            const list = document.getElementById('teachersList');
+            const displayName = json.full_name || json.username;
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `teacher-${json.id}`;
+            item.innerHTML = `
+                <div>
+                    <div class="item-name">${displayName}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
+                </div>
+                <button class="btn-del" data-user-id="${json.id}" data-elem-id="teacher-${json.id}" onclick="deleteUser(this)">Удалить</button>
+            `;
+            list.querySelector('p')?.remove();
+            list.appendChild(item);
+            form.reset();
         }
+    } catch(e) { showToast('Ошибка', true); }
+});
 
-        btn.textContent = '...';
-        btn.disabled = true;
+// ── Создать ученика ────────────────────────────
+document.getElementById('createStudentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_student', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Ученик создан');
+            const list = document.getElementById('studentsList');
+            const displayName = json.full_name || json.username;
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `student-${json.id}`;
+            item.innerHTML = `
+                <div>
+                    <div class="item-name">${displayName}</div>
+                    <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">${json.username}</div>
+                </div>
+                <button class="btn-del" data-user-id="${json.id}" data-elem-id="student-${json.id}" onclick="deleteUser(this)">Удалить</button>
+            `;
+            list.querySelector('p')?.remove();
+            list.appendChild(item);
+            form.reset();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
 
-        const fd = new FormData();
-        fd.append('new_date', input.value);
-        fd.append('csrfmiddlewaretoken', CSRF);
+// ── Создать направление ────────────────────────
+document.getElementById('createSubjectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('create_subject', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Направление добавлено');
+            location.reload();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+});
 
-        try {
-            const resp = await fetch(`/lesson/reschedule/${lessonId}/`, {
-                method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd
+// ── Удалить пользователя ───────────────────────
+async function deleteUser(btn) {
+    const userId = btn.dataset.userId;
+    const elemId = btn.dataset.elemId;
+    if (!confirm('Удалить пользователя?')) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('user_id', userId);
+    data.append('delete_user', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const el = document.getElementById(elemId);
+            if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
+            showToast('✓ Удалено');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Удалить направление ────────────────────────
+async function deleteSubject(btn) {
+    const subjectId = btn.dataset.subjectId;
+    if (!confirm('Удалить направление?')) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('subject_id', subjectId);
+    data.append('delete_subject', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const el = document.getElementById(`subject-${subjectId}`);
+            if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
+            showToast('✓ Направление удалено');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Обновить цену направления ──────────────────
+// БАГ а): запретить пустое значение, форматировать как 900.00
+async function updatePrice(event, form) {
+    event.preventDefault();
+    const subjectId = form.dataset.subjectId;
+    const priceInput = form.querySelector('input[name="new_price"]');
+    const priceVal = priceInput.value.trim();
+
+    // Запрет пустого значения и нуля
+    if (!priceVal || parseFloat(priceVal) <= 0) {
+        showToast('Введите корректную цену', true);
+        priceInput.focus();
+        return;
+    }
+
+    const data = new FormData(form);
+    data.append('update_price', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const tag = document.getElementById(`price-tag-${subjectId}`);
+            // БАГ а): всегда показываем с сотыми (900 → "900.00 ₽")
+            if (tag) tag.textContent = formatPrice(json.new_price) + ' ₽';
+            // Обновляем и поле ввода чтобы тоже показывало 900.00
+            priceInput.value = formatPrice(json.new_price);
+            showToast('✓ Цена обновлена');
+            // БАГ а): пересортировать направления по цене
+            sortSubjectsByPrice();
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── БАГ а): сортировка направлений по цене ─────
+function sortSubjectsByPrice() {
+    const list = document.getElementById('subjectsList');
+    if (!list) return;
+    const rows = Array.from(list.querySelectorAll('.price-row'));
+    rows.sort((a, b) => {
+        const priceA = parseFloat(a.querySelector('.tag-price')?.textContent || '0');
+        const priceB = parseFloat(b.querySelector('.tag-price')?.textContent || '0');
+        return priceA - priceB;
+    });
+    rows.forEach(r => list.appendChild(r));
+}
+
+// ── БАГ а): обновление цвета без перезагрузки ──
+async function updateColor(event, form) {
+    event.preventDefault();
+    const subjectId = form.querySelector('input[name="subject_id"]').value;
+    const colorVal  = form.querySelector('input[name="new_color"]').value;
+    const data = new FormData(form);
+    data.append('update_color', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            // Обновляем цвет квадратика сразу
+            form.querySelector('input[name="new_color"]').style.outline = `3px solid ${colorVal}`;
+            showToast('✓ Цвет обновлён');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── БАГ б): назначение ученика + обновление таблицы без перезагрузки ──
+document.querySelector('form[data-action="assign_student"]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    data.append('assign_student', '1');
+
+    const studentSelect = form.querySelector('select[name="student_id"]');
+    const studentName   = studentSelect.options[studentSelect.selectedIndex]?.text || '';
+    const checkedTeachers = Array.from(form.querySelectorAll('input[name="teacher_ids"]:checked'));
+
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Назначения сохранены');
+
+            // Удаляем старые строки этого ученика из таблицы
+            const tbody = document.getElementById('assignTable');
+            Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                if (tr.querySelector('td')?.textContent?.trim() === studentName) tr.remove();
             });
+            // Убираем "нет назначений"
+            tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
 
-            if (resp.ok) {
-                const newDate = new Date(input.value);
-                const dayStr  = newDate.toLocaleDateString('ru-RU', { weekday: 'long' });
-                const dtStr   = newDate.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' })
-                              + ' · '
-                              + newDate.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-
-                if (row) {
-                    const dayCell = row.querySelector('.date-cell .day');
-                    const dtCell  = row.querySelector('.date-cell .datetime');
-                    if (dayCell) dayCell.textContent = dayStr;
-                    if (dtCell)  dtCell.textContent  = dtStr;
-
-                    // Создаём .rescheduled если нет, затем сразу пишем текст
-                    let el = row.querySelector('.rescheduled');
-                    if (!el) {
-                        el = document.createElement('div');
-                        el.className = 'rescheduled';
-                        row.querySelector('.date-cell').appendChild(el);
-                    }
-                    el.textContent = `⚠ перенесено (было ${oldDateText})`;
-
-                    row.style.background = 'rgba(16,185,129,0.08)';
-                    setTimeout(() => row.style.background = '', 1800);
+            // Добавляем новые строки
+            if (checkedTeachers.length === 0) {
+                // Если не выбрано ни одного учителя — показать "нет" если таблица пустая
+                if (!tbody.querySelector('tr')) {
+                    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>';
                 }
-
-                if (card) {
-                    const dayEl = card.querySelector('.lc-day');
-                    const dtEl  = card.querySelector('.lc-dt');
-                    if (dayEl) dayEl.textContent = dayStr;
-                    if (dtEl)  dtEl.textContent  = dtStr;
-
-                    let el = card.querySelector('.lc-moved');
-                    if (!el) {
-                        el = document.createElement('div');
-                        el.className = 'lc-moved';
-                        card.querySelector('.lc-date').appendChild(el);
-                    }
-                    el.textContent = `⚠ перенесено (было ${oldDateText})`;
-                }
-
-                input.value = '';
-                btn.textContent = '✓ Готово';
-                setTimeout(() => btn.textContent = origText, 2000);
             } else {
-                btn.textContent = 'Ошибка';
-                setTimeout(() => btn.textContent = origText, 2000);
+                checkedTeachers.forEach(cb => {
+                    const label = cb.closest('label');
+                    const teacherName = label ? label.textContent.trim() : '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td style="font-weight:600;">${studentName}</td><td style="color:var(--muted2);">${teacherName}</td>`;
+                    tbody.appendChild(tr);
+                });
             }
-        } catch(e) {
-            alert('Ошибка соединения');
-            btn.textContent = origText;
-        } finally {
-            btn.disabled = false;
+            form.reset();
         }
+    } catch(e) { showToast('Ошибка', true); }
+});
+
+// ── БАГ в): ставки учителей + обновление таблицы без перезагрузки ──
+document.querySelector('form[data-action="set_rate"]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+
+    const teacherSelect = form.querySelector('select[name="teacher_id"]');
+    const subjectSelect = form.querySelector('select[name="subject_id"]');
+    const rateInput     = form.querySelector('input[name="rate"]');
+
+    const teacherName = teacherSelect.options[teacherSelect.selectedIndex]?.text || '';
+    const subjectName = subjectSelect.options[subjectSelect.selectedIndex]?.text || '';
+    const rateVal     = rateInput.value.trim();
+
+    if (!rateVal || parseFloat(rateVal) <= 0) {
+        showToast('Введите ставку', true);
+        rateInput.focus();
+        return;
     }
 
-    // ── Пометки учеников ─────────────────────────
-    function toggleNotes() {
-        const body    = document.getElementById('notesBody');
-        const chevron = document.getElementById('notesChevron');
-        const header  = document.getElementById('notesToggle');
-        if (!body) return;
-        const open = body.classList.toggle('open');
-        chevron.classList.toggle('open', open);
-        header.classList.toggle('open', open);
-        localStorage.setItem('notesOpen', open ? '1' : '0');
-    }
+    const data = new FormData(form);
+    data.append('set_rate', '1');
 
-    async function saveNote(btn) {
-        const studentId = btn.dataset.studentId;
-        const input = document.querySelector(`.note-input[data-student-id="${studentId}"]`);
-        const badge = document.getElementById(`note-badge-${studentId}`);
-        const text  = input ? input.value.trim() : '';
-        const displayName = input ? (input.dataset.displayName || '') : '';
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            showToast('✓ Ставка назначена');
+            const tbody = document.getElementById('ratesTable');
+            tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
 
-        btn.disabled = true;
-
-        const fd = new FormData();
-        fd.append('target_id', studentId);
-        fd.append('text', text);
-        fd.append('csrfmiddlewaretoken', CSRF);
-
-        try {
-            const resp = await fetch('/notes/save/', {
-                method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd
+            // БАГ в): если такая пара учитель+предмет уже есть — обновляем, иначе добавляем
+            let updated = false;
+            Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                if (tds[0]?.textContent?.trim() === teacherName &&
+                    tds[1]?.textContent?.trim() === subjectName) {
+                    tds[2].textContent = formatPrice(rateVal) + ' ₽';
+                    updated = true;
+                }
             });
-            if (resp.ok) {
-                if (badge) { badge.style.display = 'block'; setTimeout(() => badge.style.display = 'none', 2000); }
-
-                // Обновляем все .student-display с этим student_id
-                document.querySelectorAll(`.student-display[data-student-id="${studentId}"]`).forEach(el => {
-                    el.textContent = text ? `🏷 ${text}` : (el.dataset.displayName || '');
-                });
-
-                // Обновляем option в select ученика
-                document.querySelectorAll(`#studentSelect option[value="${studentId}"]`).forEach(opt => {
-                    opt.textContent = text ? `${text} (${displayName})` : displayName;
-                });
+            if (!updated) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600;">${teacherName}</td>
+                    <td>${subjectName}</td>
+                    <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">${formatPrice(rateVal)} ₽</td>
+                `;
+                tbody.appendChild(tr);
             }
-        } catch(e) { /* тихо */ }
-        finally { btn.disabled = false; }
-    }
-
-    // Enter в поле пометки — сохранить
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.classList.contains('note-input')) {
-            const btn = e.target.closest('.note-input-wrap')?.querySelector('.btn-note-save');
-            if (btn) saveNote(btn);
+            form.reset();
         }
-    });
+    } catch(e) { showToast('Ошибка', true); }
+});
 
-    // Восстанавливаем открытость блока пометок
-    window.addEventListener('load', () => {
-        if (localStorage.getItem('notesOpen') === '1') toggleNotes();
+// ── Профиль администратора ─────────────────────
+async function saveAdminProfile() {
+    const fullname = document.getElementById('adminFullnameInput').value.trim();
+    if (!fullname) { showToast('Введите ФИО', true); return; }
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('admin_fullname', fullname);
+    data.append('update_admin_profile', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            document.getElementById('adminDisplayName').textContent = fullname;
+            showToast('✓ Профиль сохранён');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
 
-        // Дефолтная дата — завтра 16:00
-        const inp = document.getElementById('lesson_date_time');
-        if (!inp) return;
-        const now = new Date();
-        now.setDate(now.getDate() + 1);
-        const pad = n => String(n).padStart(2, '0');
-        inp.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T16:00`;
+// ── При загрузке: отформатировать все цены как X.XX ──
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.tag-price').forEach(tag => {
+        const val = parseFloat(tag.textContent);
+        if (!isNaN(val)) tag.textContent = formatPrice(val) + ' ₽';
     });
+    // Начальная сортировка по цене
+    sortSubjectsByPrice();
+});
 </script>
 {% endblock %}
