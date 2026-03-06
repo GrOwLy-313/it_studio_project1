@@ -266,9 +266,28 @@
             <span class="toolbar-label">👨‍🏫 Учитель</span>
             <select name="teacher_filter" class="toolbar-select">
                 <option value="">— Все —</option>
-                {% for t in teachers %}<option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
+                {% for t in teachers %}<option value="{{ t.id }}" {% if teacher_filter_id == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
             </select>
         </div>
+        <div class="toolbar-divider"></div>
+        {% endif %}
+        {% if user.role != 'student' %}
+        <div class="toolbar-group">
+            <span class="toolbar-label">🎓 Ученик</span>
+            <select name="student_filter" class="toolbar-select">
+                <option value="">— Все —</option>
+                {% for s in students %}<option value="{{ s.id }}" {% if student_filter_id == s.id|stringformat:"i" %}selected{% endif %}>{{ s.get_display_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">📚 Предмет</span>
+            <select name="subject_filter" class="toolbar-select">
+                <option value="">— Все —</option>
+                {% for subj in all_subjects %}<option value="{{ subj.id }}" {% if subject_filter_id == subj.id|stringformat:"i" %}selected{% endif %}>{{ subj.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="toolbar-divider"></div>
         {% endif %}
         <div class="toolbar-group">
             <span class="toolbar-label">📅 Месяц</span>
@@ -276,21 +295,38 @@
         </div>
         <div class="toolbar-actions">
             <button type="submit" class="btn-filter">Применить</button>
-            {% if request.GET.teacher_filter or request.GET.month %}<a href="{% url 'archive' %}" class="btn-reset">✕ Сбросить</a>{% endif %}
+            {% if teacher_filter_id or student_filter_id or subject_filter_id or month_filter %}<a href="{% url 'archive' %}" class="btn-reset">✕ Сбросить</a>{% endif %}
         </div>
     </form>
-    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=year" class="btn-export">📥 Экспорт</a>{% endif %}
+    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=year{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export">📥 Экспорт</a>{% endif %}
 </div>
 {% else %}
 <div class="toolbar">
     <form method="get" class="toolbar-form">
-        {% if request.GET.teacher_filter %}<input type="hidden" name="teacher_filter" value="{{ request.GET.teacher_filter }}">{% endif %}
         {% if user.role == 'admin' %}
         <div class="toolbar-group">
             <span class="toolbar-label">👨‍🏫 Учитель</span>
             <select name="teacher_filter" class="toolbar-select">
                 <option value="">— Все учителя —</option>
-                {% for t in teachers %}<option value="{{ t.id }}" {% if request.GET.teacher_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
+                {% for t in teachers %}<option value="{{ t.id }}" {% if teacher_filter_id == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_display_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="toolbar-divider"></div>
+        {% endif %}
+        {% if user.role != 'student' %}
+        <div class="toolbar-group">
+            <span class="toolbar-label">🎓 Ученик</span>
+            <select name="student_filter" class="toolbar-select">
+                <option value="">— Все ученики —</option>
+                {% for s in students %}<option value="{{ s.id }}" {% if student_filter_id == s.id|stringformat:"i" %}selected{% endif %}>{{ s.get_display_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">📚 Предмет</span>
+            <select name="subject_filter" class="toolbar-select">
+                <option value="">— Все предметы —</option>
+                {% for subj in all_subjects %}<option value="{{ subj.id }}" {% if subject_filter_id == subj.id|stringformat:"i" %}selected{% endif %}>{{ subj.name }}</option>{% endfor %}
             </select>
         </div>
         <div class="toolbar-divider"></div>
@@ -303,11 +339,11 @@
                 <button type="submit" name="period" value="month" class="period-pill {% if period_filter == 'month' %}active{% endif %}">Месяц</button>
             </div>
         </div>
-        {% if user.role == 'admin' and request.GET.teacher_filter %}
+        {% if teacher_filter_id or student_filter_id or subject_filter_id %}
         <div class="toolbar-actions"><a href="{% url 'calendar' %}" class="btn-reset">✕ Сбросить</a></div>
         {% endif %}
     </form>
-    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
+    {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
     {% if user.role != 'student' %}<a href="#add-lesson-form" class="btn-add-jump">➕ Добавить занятие</a>{% endif %}
 </div>
 {% endif %}
@@ -329,7 +365,7 @@
             <tr class="{% if is_archive %}archive-row{% endif %}" data-color="{{ lesson.subject.color }}">
                 <td>
                     <div class="date-cell">
-                        <div class="day">{{ lesson.date_time|date:"l" }}</div>
+                        <div class="day">{{ lesson.date_time|date:"l" }}{% if lesson.group_id %} <span title="Повторяющееся занятие" style="font-size:11px;opacity:0.7;">🔁</span>{% endif %}</div>
                         <div class="datetime">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
                         {% if lesson.original_date_time %}
                         <div class="rescheduled">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
@@ -365,13 +401,13 @@
                             <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
                             <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
                         </select>
-                        <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
+                        <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onsubmit="rescheduleLesson(event, this)">
                             {% csrf_token %}
                             <input type="datetime-local" name="new_date" required>
                             <button type="submit" class="btn-reschedule">Перенести</button>
                         </form>
                         {% if user.role == 'admin' or lesson.teacher == user %}
-                        <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
+                        <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
                         {% endif %}
                     </div>
                     {% else %}
@@ -407,7 +443,7 @@
     <div class="lesson-card {% if is_archive %}archive-row{% endif %}" style="--card-color: {{ lesson.subject.color }}">
         <div class="lc-top">
             <div class="lc-date">
-                <div class="lc-day">{{ lesson.date_time|date:"l" }}</div>
+                <div class="lc-day">{{ lesson.date_time|date:"l" }}{% if lesson.group_id %} <span title="Повторяющееся занятие" style="font-size:11px;opacity:0.7;">🔁</span>{% endif %}</div>
                 <div class="lc-dt">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
                 {% if lesson.original_date_time %}
                 <div class="lc-moved">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
@@ -454,19 +490,19 @@
                 <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
                 <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
             </select>
-            <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" onsubmit="rescheduleLesson(event, this)">
+            <form class="reschedule-form" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onsubmit="rescheduleLesson(event, this)">
                 {% csrf_token %}
                 <input type="datetime-local" name="new_date" required>
                 <button type="submit" class="btn-reschedule">📅 Перенести</button>
             </form>
             {% if user.role == 'admin' or lesson.teacher == user %}
-            <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
+            <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
             {% endif %}
         </div>
         {% elif is_archive and user.role in 'teacher admin' %}
         <div class="lc-actions" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border);">
             {% if user.role == 'admin' or lesson.teacher == user %}
-            <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
+            <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
             {% endif %}
         </div>
         {% endif %}
@@ -480,12 +516,12 @@
 {% if page_obj.has_other_pages %}
 <div class="pagination-wrap">
     <div class="pagination">
-        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">← Назад</a>{% else %}<span class="page-btn disabled">← Назад</span>{% endif %}
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if period_filter != "all" %}&period={{ period_filter }}{% endif %}{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">← Назад</a>{% else %}<span class="page-btn disabled">← Назад</span>{% endif %}
         {% for num in page_obj.paginator.page_range %}
             {% if page_obj.number == num %}<span class="page-btn active">{{ num }}</span>
-            {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}<a href="?page={{ num }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">{{ num }}</a>{% endif %}
+            {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}<a href="?page={{ num }}{% if period_filter != "all" %}&period={{ period_filter }}{% endif %}{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">{{ num }}</a>{% endif %}
         {% endfor %}
-        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.teacher_filter %}&teacher_filter={{ request.GET.teacher_filter }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">Вперёд →</a>{% else %}<span class="page-btn disabled">Вперёд →</span>{% endif %}
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if period_filter != "all" %}&period={{ period_filter }}{% endif %}{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}" class="page-btn">Вперёд →</a>{% else %}<span class="page-btn disabled">Вперёд →</span>{% endif %}
     </div>
     <div class="pagination-info">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }} · всего {{ page_obj.paginator.count }} занятий</div>
 </div>
@@ -575,17 +611,35 @@
 
     // ── Удаление ─────────────────────────────────
     async function deleteLesson(btn) {
-        if (!confirm('Удалить занятие?')) return;
         const lessonId = btn.dataset.lessonId;
+        const hasGroup = btn.dataset.groupId && btn.dataset.groupId !== 'None';
+
+        let scope = 'one';
+        if (hasGroup) {
+            const choice = confirm('Удалить все будущие уроки этой серии?\n\nОК — удалить всю серию\nОтмена — удалить только этот урок');
+            if (choice === null) return; // пользователь закрыл окно
+            scope = choice ? 'all' : 'one';
+        } else {
+            if (!confirm('Удалить занятие?')) return;
+        }
+
         const row = btn.closest('tr') || btn.closest('.lesson-card');
         if (row) row.style.opacity = '0.5';
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', CSRF);
+        fd.append('scope', scope);
         try {
             const resp = await fetch(`/lesson/delete/${lessonId}/`, {
-                method: 'POST', headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+                method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd
             });
-            if (resp.ok && row) {
-                row.style.transition = 'opacity 0.3s'; row.style.opacity = '0';
-                setTimeout(() => row.remove(), 300);
+            if (resp.ok) {
+                if (scope === 'all') {
+                    // перезагружаем страницу чтобы убрать все удалённые уроки серии
+                    location.reload();
+                } else if (row) {
+                    row.style.transition = 'opacity 0.3s'; row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 300);
+                }
             } else if (row) row.style.opacity = '1';
         } catch(e) { if (row) row.style.opacity = '1'; }
     }
@@ -603,14 +657,20 @@
     }
 
     // ── БАГ 6: Перенос ───────────────────────────
-    // Старую дату читаем ИЗ DOM прямо перед отправкой запроса.
-    // Это гарантирует что она всегда есть — независимо от ответа сервера.
     async function rescheduleLesson(event, form) {
         event.preventDefault();
         const lessonId = form.dataset.lessonId;
+        const hasGroup = form.dataset.groupId && form.dataset.groupId !== 'None';
         const input    = form.querySelector('input[name="new_date"]');
         const btn      = form.querySelector('button');
         const origText = btn.textContent;
+
+        let scope = 'one';
+        if (hasGroup) {
+            const choice = confirm('Перенести все будущие уроки этой серии на тот же сдвиг?\n\nОК — перенести всю серию\nОтмена — перенести только этот урок');
+            if (choice === null) return;
+            scope = choice ? 'all' : 'one';
+        }
 
         // Получаем текущую дату из DOM ДО отправки
         const row  = form.closest('tr');
@@ -627,6 +687,7 @@
 
         const fd = new FormData();
         fd.append('new_date', input.value);
+        fd.append('scope', scope);
         fd.append('csrfmiddlewaretoken', CSRF);
 
         try {

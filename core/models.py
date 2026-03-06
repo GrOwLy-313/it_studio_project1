@@ -91,6 +91,7 @@ class Lesson(models.Model):
     date_time = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
     original_date_time = models.DateTimeField(null=True, blank=True)
+    group_id = models.UUIDField(null=True, blank=True, db_index=True, verbose_name="ID серии")
 
     def __str__(self):
         return f"{self.subject.name} - {self.student.username}"

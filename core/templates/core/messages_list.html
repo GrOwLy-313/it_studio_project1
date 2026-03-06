@@ -270,7 +270,7 @@
 
                 <div class="avatar-wrap">
                     <div class="avatar {{ item.user.role }}">
-                        {{ item.user.username|first|upper }}
+                        {{ item.user.get_display_name|first|upper }}
                     </div>
                     {% if item.last_message %}
                         <div class="avatar-online"></div>
@@ -317,7 +317,7 @@
                data-role="{{ u.role }}"
                data-unread="0">
                 <div class="avatar-wrap">
-                    <div class="avatar {{ u.role }}">{{ u.username|first|upper }}</div>
+                    <div class="avatar {{ u.role }}">{{ u.get_display_name|first|upper }}</div>
                 </div>
                 <div class="contact-content">
                     <div class="contact-top">

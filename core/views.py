@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 import csv
+import uuid
 
 
 def _next_student_login():
@@ -64,6 +65,8 @@ def calendar_view(request):
 
     # --- 2. ФИЛЬТРАЦИЯ УРОКОВ (только не-архивные) ---
     teacher_filter_id = request.GET.get('teacher_filter')
+    student_filter_id = request.GET.get('student_filter')
+    subject_filter_id = request.GET.get('subject_filter')
     period_filter = request.GET.get('period')
 
     if request.user.role == 'student':
@@ -76,12 +79,20 @@ def calendar_view(request):
             teacher=request.user,
             date_time__gte=archive_threshold  # БАГ 2: исключаем архивные
         ).order_by('date_time')
+        if student_filter_id:
+            lessons = lessons.filter(student_id=student_filter_id)
+        if subject_filter_id:
+            lessons = lessons.filter(subject_id=subject_filter_id)
     else:  # Админ
         lessons = Lesson.objects.filter(
             date_time__gte=archive_threshold  # БАГ 2: исключаем архивные
         ).order_by('date_time')
         if teacher_filter_id:
             lessons = lessons.filter(teacher_id=teacher_filter_id)
+        if student_filter_id:
+            lessons = lessons.filter(student_id=student_filter_id)
+        if subject_filter_id:
+            lessons = lessons.filter(subject_id=subject_filter_id)
 
     # Фильтр по периоду
     if period_filter == 'week':
@@ -186,13 +197,15 @@ def calendar_view(request):
                     'conflict_error': conflict_str,
                 })
 
+            series_group_id = uuid.uuid4() if iterations > 1 else None
             for i in range(iterations):
                 Lesson.objects.create(
                     subject=subject,
                     student=student,
                     teacher=teacher,
                     date_time=start_date + timedelta(weeks=i),
-                    status='scheduled'
+                    status='scheduled',
+                    group_id=series_group_id,
                 )
             return redirect('calendar')
 
@@ -243,28 +256,47 @@ def calendar_view(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'subjects': available_subjects,
+        'all_subjects': Subject.objects.all().order_by('name'),
         'students': students,
         'teachers': User.objects.filter(role='teacher'),
         'period_filter': period_filter or 'all',
         'student_notes': student_notes,
         'today_lessons': today_lessons,
+        'teacher_filter_id': teacher_filter_id or '',
+        'student_filter_id': student_filter_id or '',
+        'subject_filter_id': subject_filter_id or '',
     })
 
 
 @login_required
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
+    scope = request.POST.get('scope', 'one')  # 'one' или 'all'
 
-    if lesson.status == 'done':
-        rate_obj = TeacherRate.objects.filter(
-            teacher=lesson.teacher, subject=lesson.subject
-        ).first()
-        price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
-        User.objects.filter(id=lesson.student.id).update(
-            balance=models.F('balance') + price
+    if request.user != lesson.teacher and request.user.role != 'admin':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error'}, status=403)
+        return redirect('calendar')
+
+    if scope == 'all' and lesson.group_id:
+        # Удаляем все будущие уроки серии (статус scheduled)
+        series = Lesson.objects.filter(
+            group_id=lesson.group_id,
+            status='scheduled',
+            date_time__gte=lesson.date_time,
         )
-
-    lesson.delete()
+        for l in series:
+            l.delete()
+    else:
+        if lesson.status == 'done':
+            rate_obj = TeacherRate.objects.filter(
+                teacher=lesson.teacher, subject=lesson.subject
+            ).first()
+            price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
+            User.objects.filter(id=lesson.student.id).update(
+                balance=models.F('balance') + price
+            )
+        lesson.delete()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'status': 'ok'})
@@ -687,6 +719,7 @@ def reschedule_lesson(request, lesson_id):
     if request.user == lesson.teacher or request.user.role == 'admin':
         if request.method == 'POST':
             new_date_str = request.POST.get('new_date')
+            scope = request.POST.get('scope', 'one')  # 'one' или 'all'
             if new_date_str:
                 new_date = parse_datetime(new_date_str)
                 if new_date is None:
@@ -695,6 +728,23 @@ def reschedule_lesson(request, lesson_id):
                 if timezone.is_naive(new_date):
                     new_date = timezone.make_aware(new_date)
 
+                if scope == 'all' and lesson.group_id:
+                    # Сдвигаем все будущие уроки серии на ту же разницу
+                    delta = new_date - lesson.date_time
+                    future_lessons = Lesson.objects.filter(
+                        group_id=lesson.group_id,
+                        status='scheduled',
+                        date_time__gte=lesson.date_time,
+                    ).order_by('date_time')
+                    for l in future_lessons:
+                        l.date_time = l.date_time + delta
+                        l.save()
+                    new_date_fmt = new_date.strftime('%d.%m.%Y %H:%M')
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'status': 'ok', 'new_date_fmt': new_date_fmt, 'original_date': '', 'scope': 'all'})
+                    return redirect('calendar')
+
+                # scope == 'one'
                 if not lesson.original_date_time:
                     lesson.original_date_time = lesson.date_time
 
@@ -725,7 +775,8 @@ def reschedule_lesson(request, lesson_id):
                     return JsonResponse({
                         'status': 'ok',
                         'new_date_fmt': new_date_fmt,
-                        'original_date': old_date,  # всегда строка вида "28.02.2026 17:00"
+                        'original_date': old_date,
+                        'scope': 'one',
                     })
                 return redirect('calendar')
 
@@ -940,6 +991,17 @@ def export_detailed_report(request):
         status='done',
         date_time__gte=start_date
     ).select_related('subject', 'teacher', 'student').order_by('date_time')
+
+    # Дополнительные фильтры
+    teacher_filter = request.GET.get('teacher_filter')
+    student_filter = request.GET.get('student_filter')
+    subject_filter = request.GET.get('subject_filter')
+    if teacher_filter:
+        lessons = lessons.filter(teacher_id=teacher_filter)
+    if student_filter:
+        lessons = lessons.filter(student_id=student_filter)
+    if subject_filter:
+        lessons = lessons.filter(subject_id=subject_filter)
 
     total_rev = Decimal('0.00')
     total_sal = Decimal('0.00')
@@ -1300,6 +1362,13 @@ def archive_view(request):
         if teacher_filter:
             lessons = lessons.filter(teacher_id=teacher_filter)
 
+    student_filter_id = request.GET.get('student_filter')
+    subject_filter_id = request.GET.get('subject_filter')
+    if student_filter_id:
+        lessons = lessons.filter(student_id=student_filter_id)
+    if subject_filter_id:
+        lessons = lessons.filter(subject_id=subject_filter_id)
+
     month_filter = request.GET.get('month')
     if month_filter:
         try:
@@ -1326,7 +1395,12 @@ def archive_view(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'teachers': User.objects.filter(role='teacher'),
+        'students': User.objects.filter(role='student').order_by('first_name', 'username'),
+        'all_subjects': Subject.objects.all().order_by('name'),
         'period_filter': 'all',
         'is_archive': True,
         'month_filter': month_filter or '',
+        'teacher_filter_id': request.GET.get('teacher_filter', ''),
+        'student_filter_id': student_filter_id or '',
+        'subject_filter_id': subject_filter_id or '',
     })
