@@ -46,8 +46,8 @@ def is_teacher_or_admin(user):
 @login_required
 def calendar_view(request):
     now = timezone.now()
-    # Граница архива — уроки старше 3 дней уходят в архив
-    archive_threshold = now - timedelta(days=3)
+    # Граница архива — уроки старше 1 дня уходят в архив
+    archive_threshold = now - timedelta(days=1)
 
     # --- 1. АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
     with transaction.atomic():
@@ -251,8 +251,18 @@ def calendar_view(request):
         today_qs = today_qs.filter(teacher=request.user)
     today_lessons = list(today_qs)
 
+    # --- ГРУППИРОВКА ПО ДНЯМ ---
+    from collections import OrderedDict
+    lessons_by_day = OrderedDict()
+    for lesson in page_obj:
+        day = lesson.date_time.date()
+        if day not in lessons_by_day:
+            lessons_by_day[day] = []
+        lessons_by_day[day].append(lesson)
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
+        'lessons_by_day': lessons_by_day,
         'page_obj': page_obj,
         'paginator': paginator,
         'subjects': available_subjects,
@@ -1349,7 +1359,7 @@ def archive_view(request):
     if request.user.role == 'student':
         return redirect('calendar')
 
-    archive_date = timezone.now() - timedelta(days=3)
+    archive_date = timezone.now() - timedelta(days=1)
 
     if request.user.role == 'teacher':
         lessons = Lesson.objects.filter(
@@ -1386,12 +1396,21 @@ def archive_view(request):
 
     # Пагинация в архиве тоже
     from django.core.paginator import Paginator
+    from collections import OrderedDict
     paginator = Paginator(lessons, 20)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
+    lessons_by_day = OrderedDict()
+    for lesson in page_obj:
+        day = lesson.date_time.date()
+        if day not in lessons_by_day:
+            lessons_by_day[day] = []
+        lessons_by_day[day].append(lesson)
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
+        'lessons_by_day': lessons_by_day,
         'page_obj': page_obj,
         'paginator': paginator,
         'teachers': User.objects.filter(role='teacher'),

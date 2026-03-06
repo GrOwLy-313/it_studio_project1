@@ -95,7 +95,74 @@
     /* DATE CELL */
     .date-cell .day { font-weight: 800; color: var(--accent); font-size: 15px; text-transform: capitalize; letter-spacing: 0.2px; }
     .date-cell .datetime { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); margin-top: 3px; }
-    .rescheduled { font-size: 11px; color: var(--yellow); margin-top: 4px; }
+    .btn-multiselect {
+        padding: 7px 14px; height: 36px;
+        background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+        border-radius: 8px; color: #fca5a5; font-size: 13px; font-weight: 600;
+        cursor: pointer; font-family: 'Manrope', sans-serif; transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .btn-multiselect:hover { background: rgba(239,68,68,0.15); }
+    .btn-multiselect.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #ef4444; }
+
+    /* Чекбоксы в строках */
+    .cb-col { width: 36px; }
+    .lesson-cb { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+    body:not(.multiselect-mode) .cb-col,
+    body:not(.multiselect-mode) .cb-card { display: none; }
+
+    /* Плавающая панель */
+    .bulk-bar {
+        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 14px 20px;
+        display: flex; align-items: center; gap: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), opacity 0.2s;
+        opacity: 0; pointer-events: none; z-index: 999; white-space: nowrap;
+    }
+    .bulk-bar.visible { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: all; }
+    .bulk-bar-count { font-size: 14px; font-weight: 700; color: var(--text); }
+    .bulk-bar-count span { color: var(--accent); }
+    .btn-bulk-delete {
+        padding: 9px 20px; background: #ef4444; border: none;
+        border-radius: 8px; color: white; font-size: 13px; font-weight: 700;
+        cursor: pointer; font-family: 'Manrope', sans-serif; transition: background 0.2s;
+    }
+    .btn-bulk-delete:hover { background: #dc2626; }
+    .btn-bulk-cancel {
+        padding: 9px 16px; background: transparent; border: 1px solid var(--border);
+        border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600;
+        cursor: pointer; font-family: 'Manrope', sans-serif; transition: all 0.2s;
+    }
+    .btn-bulk-cancel:hover { color: var(--text); border-color: var(--text); }
+
+    /* DAY SEPARATORS */
+    .day-separator-row td { padding: 0; border: none; }
+    .day-separator {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 16px 6px;
+        margin-top: 8px;
+        border-top: 2px solid var(--border);
+    }
+    .day-separator:first-child { margin-top: 0; border-top: none; }
+    .day-sep-label {
+        font-size: 12px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; color: var(--accent);
+    }
+    .day-sep-count {
+        font-size: 11px; color: var(--muted); font-weight: 600;
+    }
+    /* Мобильный разделитель */
+    .day-sep-mobile {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 4px 4px;
+        border-top: 2px solid var(--border);
+        margin-top: 4px;
+    }
+    .day-sep-mobile:first-child { border-top: none; margin-top: 0; }
+    .day-sep-mobile .day-sep-label { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+    .day-sep-mobile .day-sep-count { font-size: 11px; color: var(--muted); }
 
     /* STATUS */
     .status-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; outline: none; width: 100%; transition: border-color 0.2s, background 0.3s; }
@@ -344,6 +411,7 @@
         {% endif %}
     </form>
     {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
+    {% if user.role != 'student' %}<button type="button" class="btn-multiselect" id="btnMultiSelect" onclick="toggleMultiSelect()">☑ Выбрать</button>{% endif %}
     {% if user.role != 'student' %}<a href="#add-lesson-form" class="btn-add-jump">➕ Добавить занятие</a>{% endif %}
 </div>
 {% endif %}
@@ -353,6 +421,7 @@
     <table>
         <thead>
             <tr>
+                <th class="cb-col"><input type="checkbox" class="lesson-cb" id="cbAll" onchange="toggleAll(this)" title="Выбрать всё"></th>
                 <th>Дата и время</th>
                 {% if user.role != 'student' %}<th>Направление</th>{% endif %}
                 <th>{% if user.role == 'admin' %}Учитель / Ученик{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</th>
@@ -361,12 +430,22 @@
             </tr>
         </thead>
         <tbody>
-            {% for lesson in lessons %}
+            {% if lessons_by_day %}
+            {% for day, day_lessons in lessons_by_day.items %}
+            <tr class="day-separator-row">
+                <td colspan="5">
+                    <div class="day-separator">
+                        <span class="day-sep-label">{{ day|date:"l, d E Y" }}</span>
+                        <span class="day-sep-count">{{ day_lessons|length }} занят{{ day_lessons|length|pluralize:"ие,ия,ий" }}</span>
+                    </div>
+                </td>
+            </tr>
+            {% for lesson in day_lessons %}
             <tr class="{% if is_archive %}archive-row{% endif %}" data-color="{{ lesson.subject.color }}">
+                <td class="cb-col"><input type="checkbox" class="lesson-cb row-cb" data-lesson-id="{{ lesson.id }}" onchange="updateBulkCount()"></td>
                 <td>
                     <div class="date-cell">
-                        <div class="day">{{ lesson.date_time|date:"l" }}{% if lesson.group_id %} <span title="Повторяющееся занятие" style="font-size:11px;opacity:0.7;">🔁</span>{% endif %}</div>
-                        <div class="datetime">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
+                        <div class="datetime">{{ lesson.date_time|date:"H:i" }}</div>
                         {% if lesson.original_date_time %}
                         <div class="rescheduled">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
                         {% endif %}
@@ -380,7 +459,6 @@
                         <div>👨‍🏫 {{ lesson.teacher.get_display_name }}</div>
                         <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.get_display_name }}</div>
                     {% else %}
-                        {# Учитель — пометка если есть #}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
                               data-display-name="{{ lesson.student.get_display_name }}">
@@ -430,20 +508,29 @@
                 </td>
                 {% endif %}
             </tr>
-            {% empty %}
-            <tr class="empty-row"><td colspan="5">{% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}</td></tr>
             {% endfor %}
+            {% endfor %}
+            {% else %}
+            <tr class="empty-row"><td colspan="5">{% if is_archive %}🗂 Архив пуст{% else %}📭 Занятий пока нет{% endif %}</td></tr>
+            {% endif %}
         </tbody>
     </table>
 </div>
 
 <!-- МОБИЛЬНЫЕ КАРТОЧКИ -->
 <div class="lesson-cards">
-    {% for lesson in lessons %}
+    {% if lessons_by_day %}
+    {% for day, day_lessons in lessons_by_day.items %}
+    <div class="day-sep-mobile">
+        <span class="day-sep-label">{{ day|date:"l, d E Y" }}</span>
+        <span class="day-sep-count">{{ day_lessons|length }} занят{{ day_lessons|length|pluralize:"ие,ия,ий" }}</span>
+    </div>
+    {% for lesson in day_lessons %}
     <div class="lesson-card {% if is_archive %}archive-row{% endif %}" style="--card-color: {{ lesson.subject.color }}">
         <div class="lc-top">
+            <input type="checkbox" class="lesson-cb cb-card row-cb" data-lesson-id="{{ lesson.id }}" onchange="updateBulkCount()" style="margin-top:4px;flex-shrink:0;">
             <div class="lc-date">
-                <div class="lc-day">{{ lesson.date_time|date:"l" }}{% if lesson.group_id %} <span title="Повторяющееся занятие" style="font-size:11px;opacity:0.7;">🔁</span>{% endif %}</div>
+                <div class="lc-day">{{ lesson.date_time|date:"l" }}</div>
                 <div class="lc-dt">{{ lesson.date_time|date:"d.m.Y · H:i" }}</div>
                 {% if lesson.original_date_time %}
                 <div class="lc-moved">⚠ перенесено (было {{ lesson.original_date_time|date:"d.m.Y H:i" }})</div>
@@ -510,6 +597,17 @@
     {% empty %}
     <div class="empty-state"><div class="big">{% if is_archive %}🗂{% else %}📭{% endif %}</div><p>{% if is_archive %}Архив пуст{% else %}Занятий пока нет{% endif %}</p></div>
     {% endfor %}
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="big">{% if is_archive %}🗂{% else %}📭{% endif %}</div><p>{% if is_archive %}Архив пуст{% else %}Занятий пока нет{% endif %}</p></div>
+    {% endif %}
+</div>
+
+<!-- ПАНЕЛЬ МАССОВОГО УДАЛЕНИЯ -->
+<div class="bulk-bar" id="bulkBar">
+    <div class="bulk-bar-count">Выбрано: <span id="bulkCount">0</span></div>
+    <button class="btn-bulk-delete" onclick="bulkDelete()">🗑 Удалить выбранные</button>
+    <button class="btn-bulk-cancel" onclick="toggleMultiSelect()">Отмена</button>
 </div>
 
 <!-- ПАГИНАЦИЯ -->
@@ -608,6 +706,72 @@
     });
 
     const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+    // ── Массовый выбор ────────────────────────────
+    let multiSelectActive = false;
+
+    function toggleMultiSelect() {
+        multiSelectActive = !multiSelectActive;
+        document.body.classList.toggle('multiselect-mode', multiSelectActive);
+        const btn = document.getElementById('btnMultiSelect');
+        btn.classList.toggle('active', multiSelectActive);
+        btn.textContent = multiSelectActive ? '✕ Отмена' : '☑ Выбрать';
+        if (!multiSelectActive) {
+            // Сбрасываем все чекбоксы
+            document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+            const cbAll = document.getElementById('cbAll');
+            if (cbAll) cbAll.checked = false;
+            updateBulkCount();
+        }
+    }
+
+    function updateBulkCount() {
+        const checked = document.querySelectorAll('.row-cb:checked').length;
+        document.getElementById('bulkCount').textContent = checked;
+        const bar = document.getElementById('bulkBar');
+        bar.classList.toggle('visible', checked > 0);
+    }
+
+    function toggleAll(masterCb) {
+        document.querySelectorAll('.row-cb').forEach(cb => {
+            cb.checked = masterCb.checked;
+        });
+        updateBulkCount();
+    }
+
+    async function bulkDelete() {
+        const checked = document.querySelectorAll('.row-cb:checked');
+        if (!checked.length) return;
+        if (!confirm(`Удалить ${checked.length} занятий? Это действие нельзя отменить.`)) return;
+
+        const ids = Array.from(checked).map(cb => cb.dataset.lessonId);
+        let deleted = 0;
+
+        for (const id of ids) {
+            const fd = new FormData();
+            fd.append('csrfmiddlewaretoken', CSRF);
+            fd.append('scope', 'one');
+            try {
+                const resp = await fetch(`/lesson/delete/${id}/`, {
+                    method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd
+                });
+                if (resp.ok) {
+                    // Убираем строку из таблицы и карточку
+                    document.querySelectorAll(`[data-lesson-id="${id}"]`).forEach(el => {
+                        const row = el.closest('tr') || el.closest('.lesson-card');
+                        if (row) { row.style.transition = 'opacity 0.2s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 220); }
+                    });
+                    deleted++;
+                }
+            } catch(e) {}
+        }
+
+        toggleMultiSelect();
+        // Если удалили все на странице — перезагрузить
+        setTimeout(() => {
+            if (document.querySelectorAll('.row-cb').length === 0) location.reload();
+        }, 400);
+    }
 
     // ── Удаление ─────────────────────────────────
     async function deleteLesson(btn) {
