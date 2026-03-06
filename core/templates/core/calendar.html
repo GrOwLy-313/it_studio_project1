@@ -15,6 +15,22 @@
     .tab-btn.archive-active { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
     .tab-btn.archive-active.active { background: rgba(245,158,11,0.15); color: var(--yellow); border-color: rgba(245,158,11,0.3); box-shadow: 0 2px 12px rgba(245,158,11,0.15); }
 
+    /* СЕГОДНЯШНИЕ ЗАНЯТИЯ */
+    .today-block { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; transition: background 0.3s, border-color 0.3s; position: relative; }
+    .today-block::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .today-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .today-title { display: flex; align-items: center; gap: 10px; }
+    .today-title span { font-size: 15px; font-weight: 700; }
+    .today-count { background: var(--accent); color: white; font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
+    .today-empty { font-size: 13px; color: var(--muted); font-style: italic; }
+    .today-lessons { display: flex; gap: 10px; padding: 0 20px 16px; flex-wrap: wrap; }
+    .today-pill { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; transition: border-color 0.2s; }
+    .today-pill:hover { border-color: var(--accent); }
+    .today-pill-time { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .today-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+    .today-pill-subject { font-size: 12px; font-weight: 700; color: var(--text); }
+    .today-pill-person { font-size: 12px; color: var(--muted); }
+
     /* БЛОК ПОМЕТОК УЧЕНИКОВ */
     .notes-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
     .notes-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.2s; user-select: none; }
@@ -170,6 +186,41 @@
     <a href="{% url 'archive' %}" class="tab-btn archive-active {% if is_archive %}active{% endif %}">🗂 Архив</a>
     {% endif %}
 </div>
+
+<!-- СЕГОДНЯШНИЕ ЗАНЯТИЯ -->
+{% if not is_archive %}
+<div class="today-block">
+    <div class="today-header">
+        <div class="today-title">
+            ☀️ <span>Сегодня</span>
+            {% if today_lessons %}
+                <span class="today-count">{{ today_lessons|length }}</span>
+            {% endif %}
+        </div>
+        {% if not today_lessons %}
+            <span class="today-empty">Занятий на сегодня нет</span>
+        {% endif %}
+    </div>
+    {% if today_lessons %}
+    <div class="today-lessons">
+        {% for lesson in today_lessons %}
+        <div class="today-pill">
+            <span class="today-pill-time">{{ lesson.date_time|date:"H:i" }}</span>
+            <div class="today-pill-dot"></div>
+            <div>
+                <div class="today-pill-subject">{{ lesson.subject.name }}</div>
+                <div class="today-pill-person">
+                    {% if user.role == 'student' %}{{ lesson.teacher.get_display_name }}
+                    {% elif user.role == 'teacher' %}{{ lesson.student.get_display_name }}
+                    {% else %}{{ lesson.teacher.get_display_name }} → {{ lesson.student.get_display_name }}{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
 <!-- ПОМЕТКИ УЧЕНИКОВ (учитель/админ, только расписание) -->
 {% if not is_archive and user.role != 'student' and students %}

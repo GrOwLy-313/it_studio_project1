@@ -10,7 +10,7 @@
     .full { grid-column: 1/-1; }
 
     .card { padding: 24px; margin-bottom: 20px; overflow: hidden; }
-    .card.scrollable { max-height: 520px; }
+    .card.scrollable { }
     .card h2 { font-size: 15px; font-weight: 700; color: var(--accent2); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 
     .form-group { margin-bottom: 14px; }
@@ -153,7 +153,7 @@
             <div class="form-group"><label>Пароль</label><input type="password" name="teacher_password" placeholder="Пароль" required></div>
             <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
         </form>
-        <div style="margin-top:20px;max-height:300px;overflow-y:auto;padding-right:4px;" id="teachersList">
+        <div style="margin-top:20px;max-height:320px;overflow-y:auto;padding-right:4px;" id="teachersList">
             {% for t in teachers %}
             <div class="list-item" id="teacher-{{ t.id }}">
                 <div>
@@ -171,12 +171,12 @@
         <h2>🎓 Ученики</h2>
         <form id="createStudentForm" data-action="create_student">
             {% csrf_token %}
-            <div class="form-group"><label>Логин</label><input type="text" name="username" placeholder="Логин для входа" required></div>
+            <div class="form-group"><label>Логин</label><input type="text" id="studentLoginInput" name="username" placeholder="Логин для входа" value="{{ next_student_login }}" required></div>
             <div class="form-group"><label>ФИО</label><input type="text" name="student_fullname" placeholder="Петров Пётр Петрович"></div>
             <div class="form-group"><label>Пароль</label><input type="password" name="password" placeholder="Пароль" required></div>
             <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
         </form>
-        <div style="margin-top:20px;max-height:300px;overflow-y:auto;padding-right:4px;" id="studentsList">
+        <div style="margin-top:20px;max-height:320px;overflow-y:auto;padding-right:4px;" id="studentsList">
             {% for s in students %}
             <div class="list-item" id="student-{{ s.id }}">
                 <div>
@@ -351,7 +351,9 @@ document.getElementById('createTeacherForm').addEventListener('submit', async (e
             body: data
         });
         const json = await resp.json();
-        if (json.status === 'ok') {
+        if (json.status === 'error') {
+            showToast('⚠ ' + json.message, true);
+        } else if (json.status === 'ok') {
             showToast('✓ Учитель создан');
             const list = document.getElementById('teachersList');
             const displayName = json.full_name || json.username;
@@ -385,7 +387,9 @@ document.getElementById('createStudentForm').addEventListener('submit', async (e
             body: data
         });
         const json = await resp.json();
-        if (json.status === 'ok') {
+        if (json.status === 'error') {
+            showToast('⚠ ' + json.message, true);
+        } else if (json.status === 'ok') {
             showToast('✓ Ученик создан');
             const list = document.getElementById('studentsList');
             const displayName = json.full_name || json.username;
@@ -402,6 +406,10 @@ document.getElementById('createStudentForm').addEventListener('submit', async (e
             list.querySelector('p')?.remove();
             list.appendChild(item);
             form.reset();
+            // Подставляем следующий авто-логин
+            if (json.next_login) {
+                document.getElementById('studentLoginInput').value = json.next_login;
+            }
         }
     } catch(e) { showToast('Ошибка', true); }
 });

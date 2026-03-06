@@ -12,6 +12,24 @@ from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 import csv
 
 
+def _next_student_login():
+    """Генерирует следующий свободный логин вида student000001."""
+    import re
+    existing = User.objects.filter(
+        username__regex=r'^student\d{6}$'
+    ).values_list('username', flat=True)
+    nums = set()
+    for u in existing:
+        m = re.match(r'^student(\d{6})$', u)
+        if m:
+            nums.add(int(m.group(1)))
+    n = 1
+    while n in nums:
+        n += 1
+    return f'student{n:06d}'
+
+
+
 def is_admin(user):
     if user.role == 'admin':
         return True
@@ -206,6 +224,20 @@ def calendar_view(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
+    # --- ЗАНЯТИЯ СЕГОДНЯ ---
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end   = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    today_qs = Lesson.objects.filter(
+        status='scheduled',
+        date_time__gte=today_start,
+        date_time__lte=today_end,
+    ).select_related('teacher', 'student', 'subject').order_by('date_time')
+    if request.user.role == 'student':
+        today_qs = today_qs.filter(student=request.user)
+    elif request.user.role == 'teacher':
+        today_qs = today_qs.filter(teacher=request.user)
+    today_lessons = list(today_qs)
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
         'page_obj': page_obj,
@@ -215,6 +247,7 @@ def calendar_view(request):
         'teachers': User.objects.filter(role='teacher'),
         'period_filter': period_filter or 'all',
         'student_notes': student_notes,
+        'today_lessons': today_lessons,
     })
 
 
@@ -423,13 +456,19 @@ def admin_panel_view(request):
             password = request.POST.get('password')
             full_name = request.POST.get('student_fullname', '')
             if username and password:
+                if User.objects.filter(username=username).exists():
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
+                    return redirect('admin_panel')
                 student = User.objects.create_user(username=username, password=password, role='student')
                 if full_name:
                     student.first_name = full_name
                     student.save()
+            next_login = _next_student_login()
             if is_ajax:
                 return JsonResponse({'status': 'ok', 'action': 'create_student',
-                                     'id': student.id, 'username': username, 'full_name': full_name})
+                                     'id': student.id, 'username': username, 'full_name': full_name,
+                                     'next_login': next_login})
             return redirect('admin_panel')
 
         elif 'create_teacher' in request.POST:
@@ -437,6 +476,10 @@ def admin_panel_view(request):
             password = request.POST.get('teacher_password')
             full_name = request.POST.get('teacher_fullname', '')
             if username and password:
+                if User.objects.filter(username=username).exists():
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
+                    return redirect('admin_panel')
                 teacher = User.objects.create_user(
                     username=username, password=password, role='teacher'
                 )
@@ -548,6 +591,7 @@ def admin_panel_view(request):
         'teachers': User.objects.filter(role='teacher'),
         'rates': TeacherRate.objects.all(),
         'teacher_students': TeacherStudent.objects.select_related('teacher', 'student').all(),
+        'next_student_login': _next_student_login(),
     })
 
 
