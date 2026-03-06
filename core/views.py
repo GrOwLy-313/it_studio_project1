@@ -105,21 +105,55 @@ def calendar_view(request):
             if timezone.is_naive(start_date):
                 start_date = timezone.make_aware(start_date)
 
+            # Проверка 0: дата не должна быть в прошлом
+            if start_date < now:
+                if request.user.role == 'admin':
+                    available_subjects = Subject.objects.all()
+                    students = User.objects.filter(role='student')
+                else:
+                    assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
+                    available_subjects = Subject.objects.filter(models.Q(id__in=assigned_ids) | models.Q(is_universal=True))
+                    student_ids = TeacherStudent.objects.filter(teacher=request.user).values_list('student_id', flat=True)
+                    students = User.objects.filter(id__in=student_ids)
+                return render(request, 'core/calendar.html', {
+                    'lessons': Lesson.objects.filter(date_time__gte=archive_threshold).order_by('date_time'),
+                    'subjects': available_subjects, 'students': students,
+                    'teachers': User.objects.filter(role='teacher'),
+                    'period_filter': 'all',
+                    'conflict_error': 'Нельзя создать занятие в прошедшую дату.',
+                })
+
             # БАГ 1: строго < 1 час (не <=), уроки длятся ровно 1 час
             conflicts = []
+            duplicates = []
             for i in range(iterations):
                 lesson_time = start_date + timedelta(weeks=i)
+
+                # Полный дубль: тот же учитель + ученик + предмет + точное время
+                exact_dup = Lesson.objects.filter(
+                    teacher=teacher, student=student, subject=subject,
+                    date_time=lesson_time
+                ).exists()
+                if exact_dup:
+                    duplicates.append(lesson_time.strftime('%d.%m.%Y %H:%M'))
+                    continue
+
                 conflict = Lesson.objects.filter(
                     teacher=teacher,
                     status='scheduled',
-                    date_time__gt=lesson_time - timedelta(hours=1),   # строго >
-                    date_time__lt=lesson_time + timedelta(hours=1),   # строго <
+                    date_time__gt=lesson_time - timedelta(hours=1),
+                    date_time__lt=lesson_time + timedelta(hours=1),
                 ).exists()
                 if conflict:
                     conflicts.append(lesson_time.strftime('%d.%m.%Y %H:%M'))
 
-            if conflicts:
-                conflict_str = ', '.join(conflicts)
+            if conflicts or duplicates:
+                error_parts = []
+                if duplicates:
+                    error_parts.append(f'Такое занятие уже существует: {", ".join(duplicates)}')
+                if conflicts:
+                    error_parts.append(f'У учителя уже есть занятие в это время: {", ".join(conflicts)}')
+                conflict_str = '. '.join(error_parts)
                 if request.user.role == 'admin':
                     available_subjects = Subject.objects.all()
                     students = User.objects.filter(role='student')
@@ -149,7 +183,7 @@ def calendar_view(request):
                     'students': students,
                     'teachers': User.objects.filter(role='teacher'),
                     'period_filter': 'all',
-                    'conflict_error': f'У учителя уже есть занятие в это время: {conflict_str}',
+                    'conflict_error': conflict_str,
                 })
 
             for i in range(iterations):

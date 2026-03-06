@@ -214,48 +214,50 @@
     </div>
 
     <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
-    <div class="card">
+    <div class="card full">
         <h2>🔗 Назначить ученика учителям</h2>
-        <form onsubmit="ajaxForm(event, this)" data-action="assign_student">
-                <div>
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
-                    <select name="student_id" required>
-                        <option value="">— Выберите ученика —</option>
-                        {% for s in students %}<option value="{{ s.id }}">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</option>{% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Учителя</div>
-                    <div class="checkboxes">
-                        {% for t in teachers %}
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
-                            {% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}
-                        </label>
-                        {% endfor %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+            <form onsubmit="ajaxForm(event, this)" data-action="assign_student">
+                {% csrf_token %}
+                <div class="assign-form">
+                    <div>
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
+                        <select name="student_id" required style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;width:100%;margin-bottom:16px;">
+                            <option value="">— Выберите ученика —</option>
+                            {% for s in students %}<option value="{{ s.id }}">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Учителя</div>
+                        <div class="checkboxes">
+                            {% for t in teachers %}
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="teacher_ids" value="{{ t.id }}">
+                                {% if t.first_name %}{{ t.first_name }}{% else %}{{ t.username }}{% endif %}
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
+                <button type="submit" name="assign_student" class="btn-green" style="width:auto;padding:10px 24px;margin-top:16px;">💾 Сохранить назначения</button>
+            </form>
+            <div>
+                <table class="assign-table">
+                    <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
+                    <tbody id="assignTable">
+                        {% for ts in teacher_students %}
+                        <tr>
+                            <td style="font-weight:600;">{% if ts.student.first_name %}{{ ts.student.first_name }}{% else %}{{ ts.student.username }}{% endif %}</td>
+                            <td style="color:var(--muted2);">{% if ts.teacher.first_name %}{{ ts.teacher.first_name }}{% else %}{{ ts.teacher.username }}{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <button type="submit" name="assign_student" class="btn-green" style="width:auto;padding:10px 24px;">💾 Сохранить назначения</button>
-        </form>
-        <div style="margin-top:20px;">
-            <table class="assign-table">
-                <thead><tr><th>Ученик</th><th>Учитель</th></tr></thead>
-                <tbody id="assignTable">
-                    {% for ts in teacher_students %}
-                    <tr>
-                        <td style="font-weight:600;">{% if ts.student.first_name %}{{ ts.student.first_name }}{% else %}{{ ts.student.username }}{% endif %}</td>
-                        <td style="color:var(--muted2);">{% if ts.teacher.first_name %}{{ ts.teacher.first_name }}{% else %}{{ ts.teacher.username }}{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
-
-</div>
 
 <!-- СТАВКИ -->
 <div class="card full">

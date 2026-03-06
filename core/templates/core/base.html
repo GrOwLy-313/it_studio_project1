@@ -24,7 +24,8 @@
 </button>
 
 <!-- ЗАТЕМНЕНИЕ ПОД САЙДБАРОМ -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<!-- pointer-events:none по умолчанию — не перехватывает тапы когда скрыт -->
+<div class="sidebar-overlay" id="sidebarOverlay" style="pointer-events:none;"></div>
 
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
@@ -96,9 +97,9 @@
 
 <script>
     /* ---- ТЕМА ---- */
-    const html = document.documentElement;
+    const html   = document.documentElement;
     const toggle = document.getElementById('themeToggle');
-    const label = document.getElementById('theme-label');
+    const label  = document.getElementById('theme-label');
 
     function applyTheme(theme) {
         html.setAttribute('data-theme', theme);
@@ -122,13 +123,15 @@
     function openSidebar() {
         sidebar.classList.add('open');
         overlay.classList.add('visible');
+        overlay.style.pointerEvents = 'auto'; // разрешаем клики на оверлей
         burger.classList.add('open');
-        document.body.style.overflow = 'hidden'; // блокируем скролл страницы
+        document.body.style.overflow = 'hidden';
     }
 
     function closeSidebar() {
         sidebar.classList.remove('open');
         overlay.classList.remove('visible');
+        overlay.style.pointerEvents = 'none'; // блокируем клики когда скрыт
         burger.classList.remove('open');
         document.body.style.overflow = '';
     }
