@@ -170,7 +170,7 @@
                 <label>Ученик</label>
                 <select name="student" required>
                     <option value="">— Выберите —</option>
-                    {% for s in students_list %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
+                    {% for s in students_list %}<option value="{{ s.id }}">{{ s.get_display_name }}</option>{% endfor %}
                 </select>
             </div>
             <div class="form-group">
@@ -216,9 +216,9 @@
         <div class="hw-meta">
             <span class="hw-pill pill-subject">{{ hw.subject.name }}</span>
             {% if user.role != 'student' %}
-                <span class="hw-pill pill-student">🎓 {{ hw.student.username }}</span>
+                <span class="hw-pill pill-student">🎓 {{ hw.student.get_display_name }}</span>
             {% else %}
-                <span class="hw-pill pill-student">👨‍🏫 {{ hw.teacher.username }}</span>
+                <span class="hw-pill pill-student">👨‍🏫 {{ hw.teacher.get_display_name }}</span>
             {% endif %}
             {% if hw.due_date %}
                 <span class="hw-pill pill-due">📅 до {{ hw.due_date|date:"d.m.Y" }}</span>
@@ -305,17 +305,14 @@
             if (resp.ok) {
                 const card = document.getElementById('hw-' + hwId);
 
-                // Обновляем класс карточки
                 card.className = card.className.replace(/status-\w+/, 'status-' + status);
 
-                // Обновляем бейдж
                 const badge = card.querySelector('.status-badge');
                 const labels  = { assigned: '⏳ Назначено', done: '✅ Выполнено', checked: '✔ Проверено' };
                 const classes = { assigned: 'badge-assigned', done: 'badge-done', checked: 'badge-checked' };
                 badge.textContent = labels[status];
                 badge.className = 'status-badge ' + classes[status];
 
-                // Обновляем кнопку комментария
                 card.querySelector('.btn-check')?.remove();
                 card.querySelector('.check-form')?.remove();
 

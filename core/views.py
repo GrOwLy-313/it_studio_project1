@@ -105,24 +105,6 @@ def calendar_view(request):
             if timezone.is_naive(start_date):
                 start_date = timezone.make_aware(start_date)
 
-            # Проверка 0: дата не должна быть в прошлом
-            if start_date < now:
-                if request.user.role == 'admin':
-                    available_subjects = Subject.objects.all()
-                    students = User.objects.filter(role='student')
-                else:
-                    assigned_ids = TeacherRate.objects.filter(teacher=request.user).values_list('subject_id', flat=True)
-                    available_subjects = Subject.objects.filter(models.Q(id__in=assigned_ids) | models.Q(is_universal=True))
-                    student_ids = TeacherStudent.objects.filter(teacher=request.user).values_list('student_id', flat=True)
-                    students = User.objects.filter(id__in=student_ids)
-                return render(request, 'core/calendar.html', {
-                    'lessons': Lesson.objects.filter(date_time__gte=archive_threshold).order_by('date_time'),
-                    'subjects': available_subjects, 'students': students,
-                    'teachers': User.objects.filter(role='teacher'),
-                    'period_filter': 'all',
-                    'conflict_error': 'Нельзя создать занятие в прошедшую дату.',
-                })
-
             # БАГ 1: строго < 1 час (не <=), уроки длятся ровно 1 час
             conflicts = []
             duplicates = []
@@ -345,6 +327,7 @@ def profile_view(request):
 
         summary_data = done_lessons.values(
             'student__username',
+            'student__first_name',
             'subject__id',
             'subject__name'
         ).annotate(lesson_count=Count('id'))
@@ -358,7 +341,7 @@ def profile_view(request):
             subtotal = current_rate * item['lesson_count']
             my_salary += subtotal
             teacher_stats.append({
-                'student__username': item['student__username'],
+                'student__username': item['student__first_name'] or item['student__username'],
                 'subject__name': item['subject__name'],
                 'lesson_count': item['lesson_count'],
                 'rate': current_rate,
@@ -473,8 +456,12 @@ def admin_panel_view(request):
             return redirect('admin_panel')
 
         elif 'create_subject' in request.POST:
-            name = request.POST.get('name')
+            name = request.POST.get('name', '').strip()
             if name:
+                if Subject.objects.filter(name__iexact=name).exists():
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': f'Направление "{name}" уже существует'})
+                    return redirect('admin_panel')
                 subj = Subject.objects.create(
                     name=name,
                     is_universal=request.POST.get('is_universal') == 'on'
@@ -1007,18 +994,18 @@ def dashboard_view(request):
 
     teacher_qs = (
         Lesson.objects.filter(status='done')
-        .values('teacher__username')
+        .values('teacher__username', 'teacher__first_name')
         .annotate(cnt=Count('id'))
         .order_by('-cnt')[:5]
     )
-    teacher_labels = [t['teacher__username'] for t in teacher_qs]
+    teacher_labels = [t['teacher__first_name'] or t['teacher__username'] for t in teacher_qs]
     teacher_data   = [t['cnt'] for t in teacher_qs]
 
     return render(request, 'core/dashboard.html', {
         'total_students': total_students,
         'total_teachers': total_teachers,
         'total_lessons':  done_lessons,
-        'revenue_total':  int(revenue_total),  # int чтобы floatformat:0 не давал пустоту на Decimal
+        'total_revenue':  int(revenue_total),  # int чтобы floatformat:0 не давал пустоту на Decimal
         'done_lessons':   done_lessons,
         'sched_lessons':  sched_lessons,
         'cancel_lessons': cancel_lessons,

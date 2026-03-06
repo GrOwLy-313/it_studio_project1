@@ -59,7 +59,6 @@
     .contact-item:last-child { border-bottom: none; }
     .contact-item:hover { background: var(--surface2); }
 
-    /* Подсветка непрочитанных */
     .contact-item.has-unread {
         background: rgba(59,130,246,0.04);
     }
@@ -81,7 +80,6 @@
     .avatar.student { background: linear-gradient(135deg, var(--green), #059669); }
     .avatar.admin   { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
 
-    /* Онлайн-точка (декоративная) */
     .avatar-online {
         position: absolute; bottom: 1px; right: 1px;
         width: 12px; height: 12px; border-radius: 50%;
@@ -159,7 +157,6 @@
         box-shadow: 0 2px 8px rgba(59,130,246,0.4);
     }
 
-    /* Роль под именем */
     .contact-role {
         display: inline-block;
         font-size: 10px;
@@ -209,7 +206,6 @@
         color: white;
     }
 
-    /* Разделитель групп */
     .group-label {
         padding: 8px 18px 6px;
         font-size: 10px;
@@ -221,7 +217,6 @@
         border-bottom: 1px solid var(--border);
     }
 
-    /* Нет результатов поиска */
     .no-results {
         padding: 40px 20px;
         text-align: center;
@@ -269,7 +264,7 @@
             {% for item in users_with_info %}
             <a href="{% url 'chat' item.user.id %}"
                class="contact-item {% if item.unread_count > 0 %}has-unread{% endif %}"
-               data-name="{{ item.user.username|lower }}"
+               data-name="{{ item.user.get_display_name|lower }}"
                data-role="{{ item.user.role }}"
                data-unread="{{ item.unread_count }}">
 
@@ -285,7 +280,7 @@
                 <div class="contact-content">
                     <div class="contact-top">
                         <div>
-                            <span class="contact-name">{{ item.user.username }}</span>
+                            <span class="contact-name">{{ item.user.get_display_name }}</span>
                             <span class="contact-role role-{{ item.user.role }}">
                                 {{ item.user.get_role_display }}
                             </span>
@@ -315,11 +310,10 @@
 
         {% else %}
 
-            <!-- Старый формат — просто список пользователей без доп. данных -->
             {% for u in users %}
             <a href="{% url 'chat' u.id %}"
                class="contact-item"
-               data-name="{{ u.username|lower }}"
+               data-name="{{ u.get_display_name|lower }}"
                data-role="{{ u.role }}"
                data-unread="0">
                 <div class="avatar-wrap">
@@ -328,7 +322,7 @@
                 <div class="contact-content">
                     <div class="contact-top">
                         <div>
-                            <span class="contact-name">{{ u.username }}</span>
+                            <span class="contact-name">{{ u.get_display_name }}</span>
                             <span class="contact-role role-{{ u.role }}">{{ u.get_role_display }}</span>
                         </div>
                     </div>

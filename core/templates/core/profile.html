@@ -6,111 +6,46 @@
 
 {% block extra_css %}
 <style>
-    /* STAT CARDS */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-card {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 16px; padding: 20px 24px;
-        position: relative; overflow: hidden;
-        transition: background 0.3s, border-color 0.3s;
-    }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; position: relative; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
     .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
     .stat-card.blue::after   { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
     .stat-card.green::after  { background: linear-gradient(90deg, var(--green), #059669); }
-    .stat-card.purple::after { background: linear-gradient(90deg, var(--purple), #6d28d9); }
-    .stat-card.yellow::after { background: linear-gradient(90deg, var(--yellow), #d97706); }
     .stat-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
     .stat-card .value { font-size: 28px; font-weight: 800; line-height: 1; }
     .stat-card .value.green  { color: var(--green); }
     .stat-card .value.blue   { color: var(--accent); }
-    .stat-card .value.purple { color: var(--purple); }
     .stat-card .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
-    /* MONTH FILTER */
-    .month-filter {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
-        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-        transition: background 0.3s, border-color 0.3s;
-    }
+    .month-filter { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; transition: background 0.3s, border-color 0.3s; }
     .month-filter label { color: var(--muted); font-size: 13px; font-weight: 600; }
-    .month-filter input[type="month"] {
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: 8px; color: var(--text); padding: 8px 12px;
-        font-family: 'Manrope', sans-serif; font-size: 13px; outline: none;
-        transition: background 0.3s, border-color 0.3s;
-    }
-    .btn-apply {
-        padding: 8px 16px; background: var(--accent); border: none;
-        border-radius: 8px; color: white; font-family: 'Manrope', sans-serif;
-        font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-    }
-    .btn-apply:hover { background: #2563eb; }
+    .month-filter input[type="month"] { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-family: 'Manrope', sans-serif; font-size: 13px; outline: none; }
+    .btn-apply { padding: 8px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-reset { color: var(--muted); font-size: 13px; text-decoration: none; }
-    .btn-reset:hover { color: var(--text); }
 
-    /* TABLE CARD */
-    .card {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 16px; overflow: hidden; margin-bottom: 24px;
-        transition: background 0.3s, border-color 0.3s;
-    }
-    .card-header {
-        padding: 18px 24px; border-bottom: 1px solid var(--border);
-        display: flex; justify-content: space-between; align-items: center;
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; transition: background 0.3s, border-color 0.3s; }
+    .card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .card-header h2 { font-size: 15px; font-weight: 700; }
-
-    .subject-pill {
-        background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
-        color: var(--accent); padding: 3px 10px; border-radius: 6px; font-size: 13px;
-    }
+    .subject-pill { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: var(--accent); padding: 3px 10px; border-radius: 6px; font-size: 13px; }
     .empty-row td { text-align: center; color: var(--muted); padding: 32px; }
 
-    /* TEACHER CARDS */
     .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .teacher-card {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 16px; padding: 20px;
-        position: relative; overflow: hidden;
-        transition: border-color 0.2s, background 0.3s;
-    }
+    .teacher-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; transition: border-color 0.2s, background 0.3s; }
     .teacher-card:hover { border-color: var(--accent); }
-    .teacher-card::before {
-        content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
-        background: linear-gradient(180deg, var(--accent), var(--accent2));
-    }
+    .teacher-card::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--accent), var(--accent2)); }
     .teacher-card .t-name { font-weight: 700; font-size: 15px; margin-bottom: 12px; padding-left: 8px; }
     .teacher-card .t-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-left: 8px; }
     .teacher-card .t-stat .t-label { font-size: 12px; color: var(--muted); }
     .teacher-card .t-stat .t-value { font-size: 14px; font-weight: 700; }
     .teacher-card .t-stat .t-value.green { color: var(--green); }
 
-    /* BALANCE */
     .balance-negative { color: var(--red); font-weight: 700; }
     .balance-positive { color: var(--green); font-weight: 700; }
     .recharge-form { display: flex; gap: 6px; align-items: center; }
-    .recharge-form input {
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: 6px; color: var(--text); padding: 6px 10px;
-        font-size: 13px; font-family: 'Manrope', sans-serif; outline: none;
-        width: 90px; transition: background 0.3s, border-color 0.3s;
-    }
-    .btn-recharge {
-        padding: 6px 12px; background: rgba(16,185,129,0.15);
-        border: 1px solid rgba(16,185,129,0.3); border-radius: 6px;
-        color: var(--green); font-size: 13px; font-weight: 700;
-        cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif;
-    }
+    .recharge-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 13px; font-family: 'Manrope', sans-serif; outline: none; width: 90px; }
+    .btn-recharge { padding: 6px 12px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); border-radius: 6px; color: var(--green); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; }
     .btn-recharge:hover { background: rgba(16,185,129,0.25); }
-
-    .admin-link {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 12px 24px;
-        background: linear-gradient(135deg, var(--accent), #2563eb);
-        border-radius: 12px; color: white; text-decoration: none;
-        font-weight: 700; font-size: 14px; transition: all 0.2s;
-    }
+    .admin-link { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, var(--accent), #2563eb); border-radius: 12px; color: white; text-decoration: none; font-weight: 700; font-size: 14px; transition: all 0.2s; }
     .admin-link:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(59,130,246,0.35); }
 </style>
 {% endblock %}
@@ -118,11 +53,10 @@
 {% block content %}
 <div class="page-header">
     <h1>👤 Личный кабинет</h1>
-    <p>{{ user.username }} · {{ user.get_role_display }}</p>
+    <p>{{ user.get_display_name }} · {{ user.get_role_display }}</p>
 </div>
 
 {% if user.role == 'teacher' %}
-
     <form method="get" class="month-filter">
         <label>📅 Период:</label>
         <input type="month" name="month" value="{{ selected_month }}">
@@ -170,11 +104,9 @@
             </tbody>
         </table>
     </div>
-
 {% endif %}
 
 {% if user.role == 'admin' %}
-
     <div class="stats-grid">
         <div class="stat-card green">
             <div class="label">Общая выручка</div>
@@ -192,7 +124,7 @@
     <div class="teachers-grid">
         {% for t_data in all_teachers %}
         <div class="teacher-card">
-            <div class="t-name">{{ t_data.user.username }}</div>
+            <div class="t-name">{{ t_data.user.get_display_name }}</div>
             <div class="t-stat">
                 <span class="t-label">Уроков проведено</span>
                 <span class="t-value">{{ t_data.count }}</span>
@@ -215,7 +147,7 @@
             <tbody>
                 {% for s in students %}
                 <tr>
-                    <td style="font-weight:600;">{{ s.username }}</td>
+                    <td style="font-weight:600;">{{ s.get_display_name }}</td>
                     <td class="{% if s.balance < 0 %}balance-negative{% else %}balance-positive{% endif %}">
                         {{ s.balance }} ₽
                     </td>
@@ -236,6 +168,5 @@
     <div style="text-align:center;margin-top:8px;">
         <a href="{% url 'admin_panel' %}" class="admin-link">⚙️ Панель управления студией</a>
     </div>
-
 {% endif %}
 {% endblock %}

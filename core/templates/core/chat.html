@@ -140,7 +140,7 @@
     <a href="{% url 'messages_list' %}" class="back-btn">← Назад</a>
     <div class="chat-avatar">{{ other_user.username|first|upper }}</div>
     <div class="info">
-        <div class="name">{{ other_user.username }}</div>
+        <div class="name">{{ other_user.get_display_name }}</div>
         <div class="status"><span class="online-dot"></span>{{ other_user.get_role_display }}</div>
     </div>
 </div>
