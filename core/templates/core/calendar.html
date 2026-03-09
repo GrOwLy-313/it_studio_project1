@@ -409,6 +409,9 @@
         {% if teacher_filter_id or student_filter_id or subject_filter_id %}
         <div class="toolbar-actions"><a href="{% url 'calendar' %}" class="btn-reset">✕ Сбросить</a></div>
         {% endif %}
+        <div class="toolbar-actions">
+            <button type="submit" name="period" value="{{ period_filter|default:'all' }}" class="btn-filter">Применить</button>
+        </div>
     </form>
     {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
     {% if user.role != 'student' %}<button type="button" class="btn-multiselect" id="btnMultiSelect" onclick="toggleMultiSelect()">☑ Выбрать</button>{% endif %}
@@ -490,9 +493,17 @@
                     </div>
                     {% else %}
                     <div style="display:flex;flex-direction:column;gap:8px;">
+                        {% if is_archive and user.role in 'teacher admin' %}
+                        <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
+                            <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
+                            <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
+                            <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
+                        </select>
+                        {% else %}
                         <span class="status-badge status-{{ lesson.status }}">
                             {% if lesson.status == 'scheduled' %}⏳ Запланирован{% elif lesson.status == 'done' %}✅ Проведён{% else %}❌ Отменён{% endif %}
                         </span>
+                        {% endif %}
                         {% if is_archive and user.role in 'teacher admin' %}
                             {% if user.role == 'admin' or lesson.teacher == user %}
                             <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
@@ -554,7 +565,7 @@
                     {% endif %}
                 </span>
             </div>
-            {% if is_archive or user.role == 'student' %}
+            {% if user.role == 'student' %}
             <div class="lc-row">
                 <span class="lc-label">Статус</span>
                 <span class="status-badge status-{{ lesson.status }}">
@@ -588,6 +599,11 @@
         </div>
         {% elif is_archive and user.role in 'teacher admin' %}
         <div class="lc-actions" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border);">
+            <select class="status-select" data-lesson-id="{{ lesson.id }}" onchange="updateStatus(this)">
+                <option value="scheduled" {% if lesson.status == 'scheduled' %}selected{% endif %}>⏳ Запланирован</option>
+                <option value="done"      {% if lesson.status == 'done'      %}selected{% endif %}>✅ Проведён</option>
+                <option value="canceled"  {% if lesson.status == 'canceled'  %}selected{% endif %}>❌ Отменён</option>
+            </select>
             {% if user.role == 'admin' or lesson.teacher == user %}
             <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
             {% endif %}
