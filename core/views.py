@@ -252,8 +252,10 @@ def calendar_view(request):
     page_obj = paginator.get_page(page_number)
 
     # --- ЗАНЯТИЯ СЕГОДНЯ ---
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end   = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    # Используем localtime чтобы границы дня считались по московскому времени, а не UTC
+    local_now   = timezone.localtime(now)
+    today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end   = local_now.replace(hour=23, minute=59, second=59, microsecond=999999)
     today_qs = Lesson.objects.filter(
         status='scheduled',
         date_time__gte=today_start,
