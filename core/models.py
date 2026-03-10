@@ -51,8 +51,8 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
     text = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    is_read = models.BooleanField(default=False, db_index=True)
 
     def __str__(self):
         return f"{self.sender} -> {self.receiver}: {self.text[:20]}"
@@ -88,10 +88,17 @@ class Lesson(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="Направление")
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teacher_lessons')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='student_lessons')
-    date_time = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+    date_time = models.DateTimeField(db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled', db_index=True)
     original_date_time = models.DateTimeField(null=True, blank=True)
     group_id = models.UUIDField(null=True, blank=True, db_index=True, verbose_name="ID серии")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['teacher', 'date_time'], name='lesson_teacher_dt_idx'),
+            models.Index(fields=['student', 'date_time'], name='lesson_student_dt_idx'),
+            models.Index(fields=['status', 'date_time'], name='lesson_status_dt_idx'),
+        ]
 
     def __str__(self):
         return f"{self.subject.name} - {self.student.username}"

@@ -50,18 +50,12 @@ def calendar_view(request):
     archive_threshold = now - timedelta(days=1)
 
     # --- 1. АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
+    # Только меняем статус на 'done' — баланс НЕ трогаем автоматически.
+    # Учитель сам ставит статус вручную, тогда и списывается баланс.
     with transaction.atomic():
-        past_lessons = Lesson.objects.select_for_update().filter(
+        Lesson.objects.select_for_update().filter(
             date_time__lt=now, status='scheduled'
-        ).select_related('student', 'subject')
-
-        for lesson in past_lessons:
-            price = lesson.subject.price_per_lesson
-            lesson.status = 'done'
-            lesson.save()
-            User.objects.filter(id=lesson.student.id).update(
-                balance=models.F('balance') - price
-            )
+        ).update(status='done')
 
     # --- 2. ФИЛЬТРАЦИЯ УРОКОВ (только не-архивные) ---
     teacher_filter_id = request.GET.get('teacher_filter')
@@ -72,21 +66,21 @@ def calendar_view(request):
     if request.user.role == 'student':
         lessons = Lesson.objects.filter(
             student=request.user,
-            date_time__gte=archive_threshold  # БАГ 2: исключаем архивные
-        ).order_by('date_time')
+            date_time__gte=archive_threshold
+        ).select_related('subject', 'teacher', 'student').order_by('date_time')
     elif request.user.role == 'teacher':
         lessons = Lesson.objects.filter(
             teacher=request.user,
-            date_time__gte=archive_threshold  # БАГ 2: исключаем архивные
-        ).order_by('date_time')
+            date_time__gte=archive_threshold
+        ).select_related('subject', 'teacher', 'student').order_by('date_time')
         if student_filter_id:
             lessons = lessons.filter(student_id=student_filter_id)
         if subject_filter_id:
             lessons = lessons.filter(subject_id=subject_filter_id)
     else:  # Админ
         lessons = Lesson.objects.filter(
-            date_time__gte=archive_threshold  # БАГ 2: исключаем архивные
-        ).order_by('date_time')
+            date_time__gte=archive_threshold
+        ).select_related('subject', 'teacher', 'student').order_by('date_time')
         if teacher_filter_id:
             lessons = lessons.filter(teacher_id=teacher_filter_id)
         if student_filter_id:
@@ -182,19 +176,39 @@ def calendar_view(request):
 
                 # Пагинация при ошибке
                 page_lessons = Lesson.objects.filter(
-                    teacher=teacher if request.user.role == 'teacher' else models.Q(),
+                    teacher=teacher,
                     date_time__gte=archive_threshold
-                ).order_by('date_time') if request.user.role == 'teacher' else Lesson.objects.filter(
+                ).select_related('subject', 'teacher', 'student').order_by('date_time') if request.user.role == 'teacher' else Lesson.objects.filter(
                     date_time__gte=archive_threshold
-                ).order_by('date_time')
+                ).select_related('subject', 'teacher', 'student').order_by('date_time')
+
+                from django.core.paginator import Paginator
+                from collections import OrderedDict
+                paginator_err = Paginator(page_lessons, 20)
+                page_obj_err = paginator_err.get_page(1)
+                lbd_err = OrderedDict()
+                for lesson in page_obj_err:
+                    day = lesson.date_time.date()
+                    if day not in lbd_err:
+                        lbd_err[day] = []
+                    lbd_err[day].append(lesson)
 
                 return render(request, 'core/calendar.html', {
-                    'lessons': page_lessons,
+                    'lessons': page_obj_err,
+                    'lessons_by_day': lbd_err,
+                    'page_obj': page_obj_err,
+                    'paginator': paginator_err,
                     'subjects': available_subjects,
+                    'all_subjects': Subject.objects.all().order_by('name'),
                     'students': students,
                     'teachers': User.objects.filter(role='teacher'),
                     'period_filter': 'all',
                     'conflict_error': conflict_str,
+                    'student_notes': {},
+                    'today_lessons': [],
+                    'teacher_filter_id': '',
+                    'student_filter_id': '',
+                    'subject_filter_id': '',
                 })
 
             series_group_id = uuid.uuid4() if iterations > 1 else None
@@ -441,26 +455,43 @@ def profile_view(request):
                 return redirect('profile')
 
         teachers = User.objects.filter(role='teacher')
-        for t in teachers:
-            t_lessons = Lesson.objects.filter(
-                teacher=t, status='done'
-            ).select_related('subject')
-            t_salary = Decimal('0.00')
-            for lesson in t_lessons:
-                r = TeacherRate.objects.filter(
-                    teacher=t, subject=lesson.subject
-                ).first()
-                t_salary += r.rate if r else Decimal('0.00')
 
+        # Все ставки одним запросом
+        all_rates = TeacherRate.objects.select_related('subject').filter(teacher__in=teachers)
+        rates_map = {}  # (teacher_id, subject_id) -> rate
+        for r in all_rates:
+            rates_map[(r.teacher_id, r.subject_id)] = r.rate
+
+        # Все уроки одним запросом с аннотацией
+        from django.db.models import Count as _Count, Sum as _Sum
+        teacher_lesson_data = (
+            Lesson.objects.filter(teacher__in=teachers, status='done')
+            .select_related('subject')
+            .values('teacher_id', 'subject_id', 'subject__price_per_lesson')
+            .annotate(cnt=_Count('id'))
+        )
+
+        teacher_counts = {}
+        teacher_salaries = {}
+        for row in teacher_lesson_data:
+            tid = row['teacher_id']
+            sid = row['subject_id']
+            cnt = row['cnt']
+            rate = rates_map.get((tid, sid), Decimal('0.00'))
+            teacher_counts[tid] = teacher_counts.get(tid, 0) + cnt
+            teacher_salaries[tid] = teacher_salaries.get(tid, Decimal('0.00')) + rate * cnt
+
+        for t in teachers:
             all_teachers_data.append({
                 'user': t,
-                'count': t_lessons.count(),
-                'salary': t_salary
+                'count': teacher_counts.get(t.id, 0),
+                'salary': teacher_salaries.get(t.id, Decimal('0.00')),
             })
 
         done_lessons_global = Lesson.objects.select_related('subject').filter(status='done')
-        for lesson in done_lessons_global:
-            total_revenue += lesson.subject.price_per_lesson
+        total_revenue = done_lessons_global.aggregate(
+            s=Sum('subject__price_per_lesson')
+        )['s'] or Decimal('0.00')
 
         students_list = User.objects.filter(role='student')
 
@@ -517,17 +548,20 @@ def admin_panel_view(request):
             username = request.POST.get('teacher_username')
             password = request.POST.get('teacher_password')
             full_name = request.POST.get('teacher_fullname', '')
-            if username and password:
-                if User.objects.filter(username=username).exists():
-                    if is_ajax:
-                        return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
-                    return redirect('admin_panel')
-                teacher = User.objects.create_user(
-                    username=username, password=password, role='teacher'
-                )
-                if full_name:
-                    teacher.first_name = full_name
-                    teacher.save()
+            if not username or not password:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Логин и пароль обязательны'})
+                return redirect('admin_panel')
+            if User.objects.filter(username=username).exists():
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
+                return redirect('admin_panel')
+            teacher = User.objects.create_user(
+                username=username, password=password, role='teacher'
+            )
+            if full_name:
+                teacher.first_name = full_name
+                teacher.save()
             if is_ajax:
                 return JsonResponse({'status': 'ok', 'action': 'create_teacher',
                                      'id': teacher.id, 'username': username, 'full_name': full_name})
@@ -676,21 +710,55 @@ def messages_list_view(request):
         ).values_list('teacher_id', flat=True)
         users = User.objects.filter(id__in=teacher_ids).distinct()
 
-    # Расширенная информация для каждого контакта
+    # Расширенная информация для каждого контакта — без N+1
+    user_ids = [u.id for u in users]
+    now = timezone.now()
+
+    # Все непрочитанные одним запросом: {sender_id: count}
+    unread_qs = (
+        Message.objects
+        .filter(sender_id__in=user_ids, receiver=request.user, is_read=False)
+        .values('sender_id')
+        .annotate(cnt=Count('id'))
+    )
+    unread_map = {row['sender_id']: row['cnt'] for row in unread_qs}
+
+    # Последнее сообщение с каждым контактом — подзапрос через subquery
+    from django.db.models import OuterRef, Subquery
+    last_msg_subq = (
+        Message.objects
+        .filter(
+            models.Q(sender=request.user, receiver=OuterRef('pk')) |
+            models.Q(sender=OuterRef('pk'), receiver=request.user)
+        )
+        .order_by('-created_at')
+        .values('id')[:1]
+    )
+    # Получаем все последние сообщения одним запросом
+    last_msg_ids = [
+        row['last_msg_id']
+        for row in User.objects.filter(id__in=user_ids)
+        .annotate(last_msg_id=Subquery(last_msg_subq))
+        .values('id', 'last_msg_id')
+        if row['last_msg_id']
+    ]
+    last_msgs = {
+        m.id: m
+        for m in Message.objects.filter(id__in=last_msg_ids).select_related('sender', 'receiver')
+    }
+    # Маппинг user_id -> last_message
+    user_last_msg = {}
+    for row in User.objects.filter(id__in=user_ids).annotate(last_msg_id=Subquery(last_msg_subq)).values('id', 'last_msg_id'):
+        if row['last_msg_id']:
+            user_last_msg[row['id']] = last_msgs.get(row['last_msg_id'])
+
     users_with_info = []
     for u in users:
-        last_msg = Message.objects.filter(
-            models.Q(sender=request.user, receiver=u) |
-            models.Q(sender=u, receiver=request.user)
-        ).order_by('-created_at').first()
-
-        unread = Message.objects.filter(
-            sender=u, receiver=request.user, is_read=False
-        ).count()
+        last_msg = user_last_msg.get(u.id)
+        unread = unread_map.get(u.id, 0)
 
         last_time = ''
         if last_msg:
-            now = timezone.now()
             delta = now - last_msg.created_at
             if delta.days == 0:
                 last_time = last_msg.created_at.strftime('%H:%M')
@@ -739,16 +807,15 @@ def reschedule_lesson(request, lesson_id):
                     new_date = timezone.make_aware(new_date)
 
                 if scope == 'all' and lesson.group_id:
-                    # Сдвигаем все будущие уроки серии на ту же разницу
                     delta = new_date - lesson.date_time
-                    future_lessons = Lesson.objects.filter(
+                    future_lessons = list(Lesson.objects.filter(
                         group_id=lesson.group_id,
                         status='scheduled',
                         date_time__gte=lesson.date_time,
-                    ).order_by('date_time')
+                    ).order_by('date_time'))
                     for l in future_lessons:
                         l.date_time = l.date_time + delta
-                        l.save()
+                    Lesson.objects.bulk_update(future_lessons, ['date_time'])
                     new_date_fmt = new_date.strftime('%d.%m.%Y %H:%M')
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({'status': 'ok', 'new_date_fmt': new_date_fmt, 'original_date': '', 'scope': 'all'})
@@ -854,13 +921,22 @@ def reports_page(request):
     context = {'tab': tab, 'period': period}
 
     if tab == 'finance':
+        lessons_qs = done_period.select_related('teacher', 'subject', 'student').order_by('-date_time')
+
+        # Все ставки одним запросом
+        lesson_list = list(lessons_qs)
+        teacher_ids = {l.teacher_id for l in lesson_list}
+        subject_ids = {l.subject_id for l in lesson_list}
+        rates_qs = TeacherRate.objects.filter(
+            teacher_id__in=teacher_ids, subject_id__in=subject_ids
+        )
+        rates_map = {(r.teacher_id, r.subject_id): r.rate for r in rates_qs}
+
         report_data = []
-        for lesson in done_period.select_related('teacher', 'subject', 'student').order_by('-date_time'):
-            rate = TeacherRate.objects.filter(
-                teacher=lesson.teacher, subject=lesson.subject
-            ).first()
+        for lesson in lesson_list:
+            rate_val = rates_map.get((lesson.teacher_id, lesson.subject_id))
             revenue = float(lesson.subject.price_per_lesson)
-            salary  = float(rate.rate) if rate else 0
+            salary  = float(rate_val) if rate_val else 0
             profit  = revenue - salary
             report_data.append({
                 'date':    lesson.date_time,
@@ -1408,13 +1484,22 @@ def archive_view(request):
             lessons_by_day[day] = []
         lessons_by_day[day].append(lesson)
 
+    # Учитель видит только своих учеников в фильтре
+    if request.user.role == 'teacher':
+        my_student_ids = TeacherStudent.objects.filter(
+            teacher=request.user
+        ).values_list('student_id', flat=True)
+        archive_students = User.objects.filter(id__in=my_student_ids).order_by('first_name', 'username')
+    else:
+        archive_students = User.objects.filter(role='student').order_by('first_name', 'username')
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
         'lessons_by_day': lessons_by_day,
         'page_obj': page_obj,
         'paginator': paginator,
         'teachers': User.objects.filter(role='teacher'),
-        'students': User.objects.filter(role='student').order_by('first_name', 'username'),
+        'students': archive_students,
         'all_subjects': Subject.objects.all().order_by('name'),
         'period_filter': 'all',
         'is_archive': True,
