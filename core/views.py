@@ -759,15 +759,16 @@ def messages_list_view(request):
 
         last_time = ''
         if last_msg:
+            local_dt = timezone.localtime(last_msg.created_at)
             delta = now - last_msg.created_at
             if delta.days == 0:
-                last_time = last_msg.created_at.strftime('%H:%M')
+                last_time = local_dt.strftime('%H:%M')
             elif delta.days == 1:
                 last_time = 'вчера'
             elif delta.days < 7:
                 last_time = f'{delta.days} дн.'
             else:
-                last_time = last_msg.created_at.strftime('%d.%m')
+                last_time = local_dt.strftime('%d.%m')
 
         users_with_info.append({
             'user': u,
