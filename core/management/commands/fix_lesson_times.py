@@ -20,13 +20,4 @@ class Command(BaseCommand):
                 output_field=DateTimeField()
             )
         )
-        self.stdout.write('✅ Готово — вычли 3 часа из всех уроков')
-```
-
-Не забудь создать пустые `__init__.py` если их нет:
-- `core/management/__init__.py`
-- `core/management/commands/__init__.py`
-
-Затем в `render.yaml` или в настройках Render в поле **Build Command** временно добавь в конец:
-```
-&& python manage.py fix_lesson_times
+        self.stdout.write('Готово — вычли 3 часа из всех уроков')
