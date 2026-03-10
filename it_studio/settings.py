@@ -5,20 +5,22 @@ import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Берём из переменной окружения, при локальной разработке используем запасной
 SECRET_KEY = os.environ.get(
     'SECRET_KEY',
     'django-insecure-local-dev-only-key-not-for-production'
 )
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# ИСПРАВЛЕНО: дефолт 'False' — в продакшене DEBUG выключен, если не задана переменная
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 if DEBUG:
     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 else:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-ALLOWED_HOSTS = ["*"]
+# ИСПРАВЛЕНО: ALLOWED_HOSTS из переменной окружения, '*' только для локальной разработки
+_allowed = os.environ.get('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = _allowed.split(',') if _allowed else (['*'] if DEBUG else [])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -32,7 +34,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ← для статики на Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,7 +66,6 @@ WSGI_APPLICATION = 'it_studio.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # На Render — используем PostgreSQL из переменной окружения
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -72,7 +73,6 @@ if DATABASE_URL:
         )
     }
 else:
-    # Локально — используем SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

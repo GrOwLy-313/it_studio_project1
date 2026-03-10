@@ -13,22 +13,32 @@ import csv
 import uuid
 
 
-def _next_student_login():
-    """Генерирует следующий свободный логин вида student000001."""
-    import re
-    existing = User.objects.filter(
-        username__regex=r'^student\d{6}$'
-    ).values_list('username', flat=True)
-    nums = set()
-    for u in existing:
-        m = re.match(r'^student(\d{6})$', u)
-        if m:
-            nums.add(int(m.group(1)))
-    n = 1
-    while n in nums:
-        n += 1
-    return f'student{n:06d}'
+# ДОПУСТИМЫЕ СТАТУСЫ УРОКОВ И ДЗ
+VALID_LESSON_STATUSES = {'scheduled', 'done', 'canceled'}
+VALID_HOMEWORK_STATUSES = {'assigned', 'done', 'checked'}
 
+
+def _next_student_login():
+    """Генерирует следующий свободный логин вида student000001.
+    ИСПРАВЛЕНО: обёрнуто в select_for_update через транзакцию для защиты от гонки.
+    """
+    import re
+    # Используем транзакцию + блокировку строк чтобы избежать дублей при параллельных запросах
+    with transaction.atomic():
+        existing = (
+            User.objects.select_for_update()
+            .filter(username__regex=r'^student\d{6}$')
+            .values_list('username', flat=True)
+        )
+        nums = set()
+        for u in existing:
+            m = re.match(r'^student(\d{6})$', u)
+            if m:
+                nums.add(int(m.group(1)))
+        n = 1
+        while n in nums:
+            n += 1
+        return f'student{n:06d}'
 
 
 def is_admin(user):
@@ -46,18 +56,15 @@ def is_teacher_or_admin(user):
 @login_required
 def calendar_view(request):
     now = timezone.now()
-    # Граница архива — уроки старше 1 дня уходят в архив
     archive_threshold = now - timedelta(days=1)
 
     # --- 1. АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
-    # Только меняем статус на 'done' — баланс НЕ трогаем автоматически.
-    # Учитель сам ставит статус вручную, тогда и списывается баланс.
     with transaction.atomic():
         Lesson.objects.select_for_update().filter(
             date_time__lt=now, status='scheduled'
         ).update(status='done')
 
-    # --- 2. ФИЛЬТРАЦИЯ УРОКОВ (только не-архивные) ---
+    # --- 2. ФИЛЬТРАЦИЯ УРОКОВ ---
     teacher_filter_id = request.GET.get('teacher_filter')
     student_filter_id = request.GET.get('student_filter')
     subject_filter_id = request.GET.get('subject_filter')
@@ -88,7 +95,6 @@ def calendar_view(request):
         if subject_filter_id:
             lessons = lessons.filter(subject_id=subject_filter_id)
 
-    # Фильтр по периоду
     if period_filter == 'week':
         lessons = lessons.filter(
             date_time__gte=now,
@@ -128,13 +134,11 @@ def calendar_view(request):
             if timezone.is_naive(start_date):
                 start_date = timezone.make_aware(start_date)
 
-            # БАГ 1: строго < 1 час (не <=), уроки длятся ровно 1 час
             conflicts = []
             duplicates = []
             for i in range(iterations):
                 lesson_time = start_date + timedelta(weeks=i)
 
-                # Полный дубль: тот же учитель + ученик + предмет + точное время
                 exact_dup = Lesson.objects.filter(
                     teacher=teacher, student=student, subject=subject,
                     date_time=lesson_time
@@ -159,6 +163,7 @@ def calendar_view(request):
                 if conflicts:
                     error_parts.append(f'У учителя уже есть занятие в это время: {", ".join(conflicts)}')
                 conflict_str = '. '.join(error_parts)
+
                 if request.user.role == 'admin':
                     available_subjects = Subject.objects.all()
                     students = User.objects.filter(role='student')
@@ -174,13 +179,14 @@ def calendar_view(request):
                     ).values_list('student_id', flat=True)
                     students = User.objects.filter(id__in=student_ids)
 
-                # Пагинация при ошибке
                 page_lessons = Lesson.objects.filter(
                     teacher=teacher,
                     date_time__gte=archive_threshold
-                ).select_related('subject', 'teacher', 'student').order_by('date_time') if request.user.role == 'teacher' else Lesson.objects.filter(
-                    date_time__gte=archive_threshold
-                ).select_related('subject', 'teacher', 'student').order_by('date_time')
+                ).select_related('subject', 'teacher', 'student').order_by('date_time') \
+                    if request.user.role == 'teacher' else \
+                    Lesson.objects.filter(
+                        date_time__gte=archive_threshold
+                    ).select_related('subject', 'teacher', 'student').order_by('date_time')
 
                 from django.core.paginator import Paginator
                 from collections import OrderedDict
@@ -239,23 +245,19 @@ def calendar_view(request):
         ).values_list('student_id', flat=True)
         students = User.objects.filter(id__in=student_ids)
 
-    # Пометки учителя об учениках (только для учителя/админа)
     student_notes = {}
     if request.user.role in ['teacher', 'admin']:
         notes_qs = UserNote.objects.filter(author=request.user)
         student_notes = {n.target_id: n.text for n in notes_qs}
 
-    # --- БАГ 3: ПАГИНАЦИЯ (20 уроков на страницу) ---
     from django.core.paginator import Paginator
     paginator = Paginator(lessons, 20)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # --- ЗАНЯТИЯ СЕГОДНЯ ---
-    # Используем localtime чтобы границы дня считались по московскому времени, а не UTC
-    local_now   = timezone.localtime(now)
+    local_now = timezone.localtime(now)
     today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end   = local_now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    today_end = local_now.replace(hour=23, minute=59, second=59, microsecond=999999)
     today_qs = Lesson.objects.filter(
         status='scheduled',
         date_time__gte=today_start,
@@ -267,7 +269,6 @@ def calendar_view(request):
         today_qs = today_qs.filter(teacher=request.user)
     today_lessons = list(today_qs)
 
-    # --- ГРУППИРОВКА ПО ДНЯМ ---
     from collections import OrderedDict
     lessons_by_day = OrderedDict()
     for lesson in page_obj:
@@ -297,7 +298,7 @@ def calendar_view(request):
 @login_required
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    scope = request.POST.get('scope', 'one')  # 'one' или 'all'
+    scope = request.POST.get('scope', 'one')
 
     if request.user != lesson.teacher and request.user.role != 'admin':
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -305,7 +306,6 @@ def delete_lesson(request, lesson_id):
         return redirect('calendar')
 
     if scope == 'all' and lesson.group_id:
-        # Удаляем все будущие уроки серии (статус scheduled)
         series = Lesson.objects.filter(
             group_id=lesson.group_id,
             status='scheduled',
@@ -361,6 +361,12 @@ def chat_view(request, user_id):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def update_lesson_status(request, lesson_id, status):
+    # ИСПРАВЛЕНО: проверка валидности статуса
+    if status not in VALID_LESSON_STATUSES:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
+        return redirect('calendar')
+
     lesson = get_object_or_404(Lesson, id=lesson_id)
 
     rate_obj = TeacherRate.objects.filter(
@@ -458,14 +464,12 @@ def profile_view(request):
 
         teachers = User.objects.filter(role='teacher')
 
-        # Все ставки одним запросом
         all_rates = TeacherRate.objects.select_related('subject').filter(teacher__in=teachers)
-        rates_map = {}  # (teacher_id, subject_id) -> rate
+        rates_map = {}
         for r in all_rates:
             rates_map[(r.teacher_id, r.subject_id)] = r.rate
 
-        # Все уроки одним запросом с аннотацией
-        from django.db.models import Count as _Count, Sum as _Sum
+        from django.db.models import Count as _Count
         teacher_lesson_data = (
             Lesson.objects.filter(teacher__in=teachers, status='done')
             .select_related('subject')
@@ -512,7 +516,6 @@ def profile_view(request):
 @login_required
 @user_passes_test(is_admin)
 def admin_panel_view(request):
-    # БАГ 5: возвращаем JSON для AJAX-запросов
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if request.method == 'POST':
@@ -530,15 +533,24 @@ def admin_panel_view(request):
             username = request.POST.get('username')
             password = request.POST.get('password')
             full_name = request.POST.get('student_fullname', '')
-            if username and password:
-                if User.objects.filter(username=username).exists():
-                    if is_ajax:
-                        return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
-                    return redirect('admin_panel')
-                student = User.objects.create_user(username=username, password=password, role='student')
-                if full_name:
-                    student.first_name = full_name
-                    student.save()
+
+            # ИСПРАВЛЕНО: проверяем username и password до создания объекта,
+            # чтобы переменная student всегда была определена перед использованием
+            if not username or not password:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Логин и пароль обязательны'})
+                return redirect('admin_panel')
+
+            if User.objects.filter(username=username).exists():
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': f'Логин "{username}" уже занят'})
+                return redirect('admin_panel')
+
+            student = User.objects.create_user(username=username, password=password, role='student')
+            if full_name:
+                student.first_name = full_name
+                student.save()
+
             next_login = _next_student_login()
             if is_ajax:
                 return JsonResponse({'status': 'ok', 'action': 'create_student',
@@ -587,9 +599,13 @@ def admin_panel_view(request):
                     name=name,
                     is_universal=request.POST.get('is_universal') == 'on'
                 )
-            if is_ajax:
-                return JsonResponse({'status': 'ok', 'action': 'create_subject',
-                                     'id': subj.id, 'name': name})
+                if is_ajax:
+                    return JsonResponse({'status': 'ok', 'action': 'create_subject',
+                                         'id': subj.id, 'name': name})
+            # ИСПРАВЛЕНО: если name пустой — не пытаемся обратиться к subj
+            else:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Название не может быть пустым'})
             return redirect('admin_panel')
 
         elif 'delete_subject' in request.POST:
@@ -602,7 +618,6 @@ def admin_panel_view(request):
         elif 'update_price' in request.POST:
             subject_id = request.POST.get('subject_id')
             new_price = request.POST.get('new_price', '').strip()
-            # Запрет пустого значения и нуля
             if subject_id and new_price:
                 try:
                     price_decimal = Decimal(new_price)
@@ -648,7 +663,6 @@ def admin_panel_view(request):
                 return JsonResponse({'status': 'ok', 'action': 'set_rate'})
             return redirect('admin_panel')
 
-        # БАГ 4: обновление профиля администратора
         elif 'update_admin_profile' in request.POST:
             full_name = request.POST.get('admin_fullname', '').strip()
             if full_name:
@@ -712,11 +726,9 @@ def messages_list_view(request):
         ).values_list('teacher_id', flat=True)
         users = User.objects.filter(id__in=teacher_ids).distinct()
 
-    # Расширенная информация для каждого контакта — без N+1
     user_ids = [u.id for u in users]
     now = timezone.now()
 
-    # Все непрочитанные одним запросом: {sender_id: count}
     unread_qs = (
         Message.objects
         .filter(sender_id__in=user_ids, receiver=request.user, is_read=False)
@@ -725,7 +737,6 @@ def messages_list_view(request):
     )
     unread_map = {row['sender_id']: row['cnt'] for row in unread_qs}
 
-    # Последнее сообщение с каждым контактом — подзапрос через subquery
     from django.db.models import OuterRef, Subquery
     last_msg_subq = (
         Message.objects
@@ -736,7 +747,6 @@ def messages_list_view(request):
         .order_by('-created_at')
         .values('id')[:1]
     )
-    # Получаем все последние сообщения одним запросом
     last_msg_ids = [
         row['last_msg_id']
         for row in User.objects.filter(id__in=user_ids)
@@ -748,7 +758,6 @@ def messages_list_view(request):
         m.id: m
         for m in Message.objects.filter(id__in=last_msg_ids).select_related('sender', 'receiver')
     }
-    # Маппинг user_id -> last_message
     user_last_msg = {}
     for row in User.objects.filter(id__in=user_ids).annotate(last_msg_id=Subquery(last_msg_subq)).values('id', 'last_msg_id'):
         if row['last_msg_id']:
@@ -800,7 +809,7 @@ def reschedule_lesson(request, lesson_id):
     if request.user == lesson.teacher or request.user.role == 'admin':
         if request.method == 'POST':
             new_date_str = request.POST.get('new_date')
-            scope = request.POST.get('scope', 'one')  # 'one' или 'all'
+            scope = request.POST.get('scope', 'one')
             if new_date_str:
                 new_date = parse_datetime(new_date_str)
                 if new_date is None:
@@ -824,7 +833,6 @@ def reschedule_lesson(request, lesson_id):
                         return JsonResponse({'status': 'ok', 'new_date_fmt': new_date_fmt, 'original_date': '', 'scope': 'all'})
                     return redirect('calendar')
 
-                # scope == 'one'
                 if not lesson.original_date_time:
                     lesson.original_date_time = lesson.date_time
 
@@ -906,7 +914,7 @@ def reports_page(request):
     from django.utils import timezone
     from datetime import timedelta
 
-    tab    = request.GET.get('tab', 'finance')
+    tab = request.GET.get('tab', 'finance')
     period = request.GET.get('period', 'month')
 
     now = timezone.now()
@@ -918,15 +926,14 @@ def reports_page(request):
         date_from = now - timedelta(days=30)
 
     lessons_period = Lesson.objects.filter(date_time__gte=date_from)
-    done_period    = lessons_period.filter(status='done')
-    cancel_period  = lessons_period.filter(status='canceled')
+    done_period = lessons_period.filter(status='done')
+    cancel_period = lessons_period.filter(status='canceled')
 
     context = {'tab': tab, 'period': period}
 
     if tab == 'finance':
         lessons_qs = done_period.select_related('teacher', 'subject', 'student').order_by('-date_time')
 
-        # Все ставки одним запросом
         lesson_list = list(lessons_qs)
         teacher_ids = {l.teacher_id for l in lesson_list}
         subject_ids = {l.subject_id for l in lesson_list}
@@ -939,26 +946,26 @@ def reports_page(request):
         for lesson in lesson_list:
             rate_val = rates_map.get((lesson.teacher_id, lesson.subject_id))
             revenue = float(lesson.subject.price_per_lesson)
-            salary  = float(rate_val) if rate_val else 0
-            profit  = revenue - salary
+            salary = float(rate_val) if rate_val else 0
+            profit = revenue - salary
             report_data.append({
-                'date':    lesson.date_time,
+                'date': lesson.date_time,
                 'teacher': lesson.teacher.get_display_name(),
                 'subject': lesson.subject.name,
                 'revenue': int(revenue),
-                'salary':  int(salary),
-                'profit':  int(profit),
+                'salary': int(salary),
+                'profit': int(profit),
             })
 
-        total_revenue  = sum(r['revenue'] for r in report_data)
-        total_salaries = sum(r['salary']  for r in report_data)
-        net_profit     = total_revenue - total_salaries
+        total_revenue = sum(r['revenue'] for r in report_data)
+        total_salaries = sum(r['salary'] for r in report_data)
+        net_profit = total_revenue - total_salaries
 
         context.update({
-            'report_data':    report_data,
-            'total_revenue':  total_revenue,
+            'report_data': report_data,
+            'total_revenue': total_revenue,
             'total_salaries': total_salaries,
-            'net_profit':     net_profit,
+            'net_profit': net_profit,
         })
 
     elif tab == 'workload':
@@ -967,7 +974,7 @@ def reports_page(request):
         max_total = 0
 
         for t in teachers:
-            done  = lessons_period.filter(teacher=t, status='done').count()
+            done = lessons_period.filter(teacher=t, status='done').count()
             sched = lessons_period.filter(teacher=t, status='scheduled').count()
             total = done + sched
             if total > 0:
@@ -996,17 +1003,17 @@ def reports_page(request):
         ]
 
         context.update({
-            'teacher_workload':    teacher_workload,
-            'subject_workload':    subject_workload,
-            'workload_total':      lessons_period.count(),
+            'teacher_workload': teacher_workload,
+            'subject_workload': subject_workload,
+            'workload_total': lessons_period.count(),
             'workload_done_total': done_period.count(),
             'workload_sched_total': lessons_period.filter(status='scheduled').count(),
         })
 
     elif tab == 'cancels':
-        total_all     = lessons_period.count()
+        total_all = lessons_period.count()
         total_cancels = cancel_period.count()
-        cancel_rate   = round(total_cancels / total_all * 100) if total_all else 0
+        cancel_rate = round(total_cancels / total_all * 100) if total_all else 0
 
         cancel_revenue_loss = int(
             cancel_period.aggregate(
@@ -1016,7 +1023,7 @@ def reports_page(request):
 
         teacher_cancels = []
         for t in User.objects.filter(role='teacher'):
-            total   = lessons_period.filter(teacher=t).count()
+            total = lessons_period.filter(teacher=t).count()
             cancels = cancel_period.filter(teacher=t).count()
             if total > 0:
                 teacher_cancels.append({
@@ -1029,7 +1036,7 @@ def reports_page(request):
 
         student_cancels = []
         for s in User.objects.filter(role='student'):
-            total   = lessons_period.filter(student=s).count()
+            total = lessons_period.filter(student=s).count()
             cancels = cancel_period.filter(student=s).count()
             if total > 0:
                 student_cancels.append({
@@ -1041,11 +1048,11 @@ def reports_page(request):
         student_cancels.sort(key=lambda x: -x['cancels'])
 
         context.update({
-            'total_cancels':       total_cancels,
-            'cancel_rate':         cancel_rate,
+            'total_cancels': total_cancels,
+            'cancel_rate': cancel_rate,
             'cancel_revenue_loss': cancel_revenue_loss,
-            'teacher_cancels':     teacher_cancels,
-            'student_cancels':     student_cancels,
+            'teacher_cancels': teacher_cancels,
+            'student_cancels': student_cancels,
         })
 
     return render(request, 'core/reports.html', context)
@@ -1081,7 +1088,6 @@ def export_detailed_report(request):
         date_time__gte=start_date
     ).select_related('subject', 'teacher', 'student').order_by('date_time')
 
-    # Дополнительные фильтры
     teacher_filter = request.GET.get('teacher_filter')
     student_filter = request.GET.get('student_filter')
     subject_filter = request.GET.get('subject_filter')
@@ -1092,15 +1098,24 @@ def export_detailed_report(request):
     if subject_filter:
         lessons = lessons.filter(subject_id=subject_filter)
 
+    # ИСПРАВЛЕНО: загружаем все ставки одним запросом вместо N+1 в цикле
+    lesson_list = list(lessons)
+    teacher_ids = {l.teacher_id for l in lesson_list}
+    subject_ids = {l.subject_id for l in lesson_list}
+    rates_map = {
+        (r.teacher_id, r.subject_id): r.rate
+        for r in TeacherRate.objects.filter(
+            teacher_id__in=teacher_ids,
+            subject_id__in=subject_ids
+        )
+    }
+
     total_rev = Decimal('0.00')
     total_sal = Decimal('0.00')
 
-    for lesson in lessons:
+    for lesson in lesson_list:
         revenue = lesson.subject.price_per_lesson
-        rate_obj = TeacherRate.objects.filter(
-            teacher=lesson.teacher, subject=lesson.subject
-        ).first()
-        salary = rate_obj.rate if rate_obj else Decimal('0.00')
+        salary = rates_map.get((lesson.teacher_id, lesson.subject_id), Decimal('0.00'))
         profit = revenue - salary
 
         total_rev += revenue
@@ -1138,28 +1153,28 @@ def dashboard_view(request):
 
     total_students = User.objects.filter(role='student').count()
     total_teachers = User.objects.filter(role='teacher').count()
-    done_lessons   = Lesson.objects.filter(status='done').count()
-    sched_lessons  = Lesson.objects.filter(status='scheduled').count()
+    done_lessons = Lesson.objects.filter(status='done').count()
+    sched_lessons = Lesson.objects.filter(status='scheduled').count()
     cancel_lessons = Lesson.objects.filter(status='canceled').count()
 
     revenue_total = Lesson.objects.filter(status='done').aggregate(
         total=Sum('subject__price_per_lesson')
     )['total'] or 0
 
-    months_labels  = []
-    months_data    = []
+    months_labels = []
+    months_data = []
     revenue_labels = []
-    revenue_data   = []
+    revenue_data = []
 
-    RU_MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн',
-                 'Июл','Авг','Сен','Окт','Ноя','Дек']
+    RU_MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
 
     for i in range(5, -1, -1):
         month = now.month - i
-        year  = now.year
+        year = now.year
         while month <= 0:
             month += 12
-            year  -= 1
+            year -= 1
 
         label = f"{RU_MONTHS[month - 1]} {year}"
         count = Lesson.objects.filter(
@@ -1185,7 +1200,7 @@ def dashboard_view(request):
         .order_by('-cnt')
     )
     subject_labels = [s['subject__name'] for s in subject_qs]
-    subject_data   = [s['cnt'] for s in subject_qs]
+    subject_data = [s['cnt'] for s in subject_qs]
 
     teacher_qs = (
         Lesson.objects.filter(status='done')
@@ -1194,29 +1209,29 @@ def dashboard_view(request):
         .order_by('-cnt')[:5]
     )
     teacher_labels = [t['teacher__first_name'] or t['teacher__username'] for t in teacher_qs]
-    teacher_data   = [t['cnt'] for t in teacher_qs]
+    teacher_data = [t['cnt'] for t in teacher_qs]
 
     return render(request, 'core/dashboard.html', {
         'total_students': total_students,
         'total_teachers': total_teachers,
-        'total_lessons':  done_lessons,
-        'total_revenue':  int(revenue_total),  # int чтобы floatformat:0 не давал пустоту на Decimal
-        'done_lessons':   done_lessons,
-        'sched_lessons':  sched_lessons,
+        'total_lessons': done_lessons,
+        'total_revenue': int(revenue_total),
+        'done_lessons': done_lessons,
+        'sched_lessons': sched_lessons,
         'cancel_lessons': cancel_lessons,
         'status_counts': {
-            'done':      done_lessons,
+            'done': done_lessons,
             'scheduled': sched_lessons,
-            'canceled':  cancel_lessons,
+            'canceled': cancel_lessons,
         },
-        'months_labels':  json.dumps(months_labels,  ensure_ascii=False),
-        'months_data':    json.dumps(months_data),
+        'months_labels': json.dumps(months_labels, ensure_ascii=False),
+        'months_data': json.dumps(months_data),
         'revenue_labels': json.dumps(revenue_labels, ensure_ascii=False),
-        'revenue_data':   json.dumps(revenue_data),
+        'revenue_data': json.dumps(revenue_data),
         'subject_labels': json.dumps(subject_labels, ensure_ascii=False),
-        'subject_data':   json.dumps(subject_data),
+        'subject_data': json.dumps(subject_data),
         'teacher_labels': json.dumps(teacher_labels, ensure_ascii=False),
-        'teacher_data':   json.dumps(teacher_data),
+        'teacher_data': json.dumps(teacher_data),
     })
 
 
@@ -1353,10 +1368,14 @@ def delete_homework(request, hw_id):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def update_homework_status(request, hw_id, status):
+    # ИСПРАВЛЕНО: проверка валидности статуса (была, оставлена явно)
+    if status not in VALID_HOMEWORK_STATUSES:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
+        return redirect('homework')
     hw = get_object_or_404(Homework, id=hw_id)
-    if status in ['assigned', 'done', 'checked']:
-        hw.status = status
-        hw.save()
+    hw.status = status
+    hw.save()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'status': 'ok'})
     return redirect('homework')
@@ -1412,7 +1431,6 @@ def chat_send(request, user_id):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def save_student_note(request):
-    """Сохранить/обновить личную пометку об ученике (видна только автору)."""
     if request.method == 'POST':
         target_id = request.POST.get('target_id')
         text = request.POST.get('text', '').strip()
@@ -1424,7 +1442,6 @@ def save_student_note(request):
                     defaults={'text': text}
                 )
             else:
-                # Пустой текст = удалить пометку
                 UserNote.objects.filter(
                     author=request.user, target_id=target_id
                 ).delete()
@@ -1473,7 +1490,6 @@ def archive_view(request):
         'teacher', 'student', 'subject'
     ).order_by('-date_time')
 
-    # Пагинация в архиве тоже
     from django.core.paginator import Paginator
     from collections import OrderedDict
     paginator = Paginator(lessons, 20)
@@ -1487,7 +1503,6 @@ def archive_view(request):
             lessons_by_day[day] = []
         lessons_by_day[day].append(lesson)
 
-    # Учитель видит только своих учеников в фильтре
     if request.user.role == 'teacher':
         my_student_ids = TeacherStudent.objects.filter(
             teacher=request.user

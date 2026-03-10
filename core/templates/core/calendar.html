@@ -464,7 +464,7 @@
                     {% else %}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
-                              data-display-name="{{ lesson.student.get_display_name }}">
+                              data-display-name="{{ lesson.student.get_display_name|escape }}">
                             {% if student_notes %}
                                 {% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}
                                 {% if not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
@@ -558,7 +558,7 @@
                     {% else %}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
-                              data-display-name="{{ lesson.student.get_display_name }}">
+                              data-display-name="{{ lesson.student.get_display_name|escape }}">
                             {% if student_notes %}{% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}{% endif %}
                             {% if not student_notes or not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
                         </span>
