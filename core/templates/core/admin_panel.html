@@ -112,6 +112,55 @@
     .admin-edit-row input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; flex: 1; transition: border-color 0.2s; }
     .admin-edit-row input:focus { border-color: var(--accent); }
     .btn-save-admin { padding: 8px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+@media (max-width: 768px) {
+    /* Основная сетка — в колонку */
+    .grid-2 { grid-template-columns: 1fr !important; }
+
+    /* Внутренний грид направлений (форма + список) */
+    .card.full > div[style*="grid-template-columns:1fr 2fr"],
+    .card.full > div[style*="grid-template-columns: 1fr 2fr"] {
+        display: block !important;
+    }
+
+    /* Внутренний грид назначений (форма + таблица) */
+    .card.full > div[style*="grid-template-columns:1fr 1fr"],
+    .card.full > div[style*="grid-template-columns: 1fr 1fr"] {
+        display: block !important;
+    }
+
+    /* Таблица назначений — под формой, не рядом */
+    .assign-table-wrap { margin-top: 20px; }
+
+    /* Форма назначения — в колонку */
+    .assign-form { flex-direction: column; gap: 12px; }
+    .assign-form select { width: 100%; }
+
+    /* Форма ставок — в колонку */
+    .rates-form form { flex-direction: column; }
+    .rates-form select { min-width: unset; width: 100%; }
+    .rates-form input { width: 100%; }
+    .btn-set { width: 100%; }
+
+    /* Направления — price-row разваливается на маленьком экране */
+    .price-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .price-actions { flex-wrap: wrap; width: 100%; }
+    .price-actions input { width: 90px; }
+
+    /* Таблица ставок — уменьшить паддинги */
+    .assign-table th,
+    .assign-table td { padding: 8px 10px; font-size: 13px; }
+
+    /* Профиль админа */
+    .admin-profile-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .admin-edit-row { flex-direction: column; }
+    .admin-edit-row input { width: 100%; }
+    .btn-save-admin { width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .card { padding: 16px; }
+    .price-actions { gap: 6px; }
+}
 </style>
 {% endblock %}
 

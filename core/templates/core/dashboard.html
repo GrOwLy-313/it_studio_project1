@@ -6,6 +6,40 @@
 
 {% block extra_css %}
 <style>
+    /* АДАПТАЦИЯ ДЛЯ МОБИЛЬНЫХ */
+@media (max-width: 768px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .kpi-card { padding: 16px; }
+    .kpi-card .kpi-value { font-size: 24px; }
+    .kpi-card .kpi-icon { font-size: 22px; margin-bottom: 8px; }
+
+    .status-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .charts-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .chart-card { padding: 16px; }
+}
+
+@media (max-width: 400px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi-card .kpi-value { font-size: 20px; }
+}
     /* KPI CARDS */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
     .kpi-card {
