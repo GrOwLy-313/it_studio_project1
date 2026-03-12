@@ -134,6 +134,58 @@
     /* EMPTY STATE */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
     .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+    @media (max-width: 768px) {
+    /* Статистика — 3 в ряд → 1 в ряд */
+    .stats-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .stat-card { padding: 14px; }
+    .stat-card .num { font-size: 22px; }
+
+    /* Форма добавления */
+    .add-card { padding: 18px; margin-bottom: 20px; }
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    /* Убираем span 2 на мобиле */
+    .form-grid .form-group[style*="span 2"] {
+        grid-column: span 1 !important;
+    }
+    .btn-create { width: 100%; }
+
+    /* Карточки заданий */
+    .hw-card { padding: 14px; }
+
+    /* Заголовок карточки — в колонку */
+    .hw-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    .hw-title { font-size: 15px; }
+
+    /* Мета-пилюли — переносятся */
+    .hw-meta { gap: 6px; }
+    .hw-pill { font-size: 11px; }
+
+    /* Действия — в колонку */
+    .hw-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hw-actions > * { width: 100%; text-align: center; }
+    .status-select-hw { width: 100%; }
+
+    /* Кнопки внутри check-form */
+    .check-form > div[style] {
+        flex-direction: column;
+    }
+    .check-form .btn-done,
+    .check-form .btn-del { width: 100%; text-align: center; }
+}
 </style>
 {% endblock %}
 

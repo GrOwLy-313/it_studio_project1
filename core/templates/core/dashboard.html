@@ -6,40 +6,6 @@
 
 {% block extra_css %}
 <style>
-    /* АДАПТАЦИЯ ДЛЯ МОБИЛЬНЫХ */
-@media (max-width: 768px) {
-    .kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-bottom: 20px;
-    }
-    .kpi-card { padding: 16px; }
-    .kpi-card .kpi-value { font-size: 24px; }
-    .kpi-card .kpi-icon { font-size: 22px; margin-bottom: 8px; }
-
-    .status-row {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        margin-bottom: 20px;
-    }
-
-    .charts-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-    .charts-grid-2 {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .chart-card { padding: 16px; }
-}
-
-@media (max-width: 400px) {
-    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .kpi-card .kpi-value { font-size: 20px; }
-}
     /* KPI CARDS */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
     .kpi-card {
@@ -47,6 +13,7 @@
         border-radius: 16px; padding: 20px 22px;
         position: relative; overflow: hidden;
         transition: transform 0.2s, border-color 0.2s, background 0.3s;
+        min-width: 0; /* предотвращает переполнение grid */
     }
     .kpi-card:hover { transform: translateY(-2px); border-color: var(--accent); }
     .kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
@@ -58,10 +25,12 @@
     .kpi-card .kpi-label {
         font-size: 11px; font-weight: 700; text-transform: uppercase;
         letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .kpi-card .kpi-value {
         font-size: 30px; font-weight: 800; line-height: 1;
         font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .kpi-card.c1 .kpi-value { color: var(--accent); }
     .kpi-card.c2 .kpi-value { color: var(--green); }
@@ -75,12 +44,13 @@
         border-radius: 12px; padding: 16px 20px;
         display: flex; align-items: center; gap: 14px;
         transition: background 0.3s, border-color 0.3s;
+        min-width: 0;
     }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .status-dot.green  { background: var(--green);  box-shadow: 0 0 8px var(--green); }
     .status-dot.yellow { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
     .status-dot.red    { background: var(--red);    box-shadow: 0 0 8px var(--red); }
-    .status-card .s-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .status-card .s-label { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
     .status-card .s-val {
         font-size: 22px; font-weight: 800;
         font-family: 'JetBrains Mono', monospace;
@@ -94,10 +64,41 @@
         background: var(--surface); border: 1px solid var(--border);
         border-radius: 16px; padding: 22px;
         transition: background 0.3s, border-color 0.3s;
+        min-width: 0;
     }
     .chart-card .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
     .chart-card .chart-sub   { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
     .chart-wrap { position: relative; }
+
+    /* АДАПТАЦИЯ — ВСЕГДА В КОНЦЕ */
+    @media (max-width: 768px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .kpi-card { padding: 14px; }
+        .kpi-card .kpi-icon { font-size: 20px; margin-bottom: 6px; }
+        .kpi-card .kpi-label { font-size: 10px; letter-spacing: 0.5px; }
+        .kpi-card .kpi-value { font-size: 22px; }
+
+        .status-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .charts-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .charts-grid-2 {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .chart-card { padding: 14px; }
+    }
 </style>
 {% endblock %}
 
