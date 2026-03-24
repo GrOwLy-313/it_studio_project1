@@ -50,6 +50,52 @@
     }
     .btn-publish:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
 
+    .btn-del-mat {
+        padding: 5px 11px; background: rgba(239,68,68,0.08);
+        border: 1px solid rgba(239,68,68,0.2); border-radius: 7px;
+        color: #fca5a5; font-size: 12px; font-weight: 600;
+        cursor: pointer; font-family: 'Manrope', sans-serif;
+        transition: all 0.2s;
+    }
+    .btn-del-mat:hover { background: rgba(239,68,68,0.18); }
+    .btn-edit-mat {
+        padding: 5px 11px; background: rgba(59,130,246,0.08);
+        border: 1px solid rgba(59,130,246,0.2); border-radius: 7px;
+        color: var(--accent); font-size: 12px; font-weight: 600;
+        cursor: pointer; font-family: 'Manrope', sans-serif;
+        transition: all 0.2s;
+    }
+    .btn-edit-mat:hover { background: rgba(59,130,246,0.18); }
+
+    /* Форма редактирования */
+    .edit-form {
+        display: none; margin-top: 14px;
+        border-top: 1px solid var(--border); padding-top: 14px;
+    }
+    .edit-form.open { display: block; }
+    .edit-form input, .edit-form textarea {
+        width: 100%; background: var(--surface2);
+        border: 1.5px solid var(--border); border-radius: 8px;
+        color: var(--text); padding: 9px 12px;
+        font-family: 'Manrope', sans-serif; font-size: 13px;
+        outline: none; margin-bottom: 8px;
+        transition: border-color 0.2s;
+    }
+    .edit-form input:focus, .edit-form textarea:focus { border-color: var(--accent); }
+    .edit-form textarea { resize: vertical; min-height: 60px; }
+    .edit-form-btns { display: flex; gap: 8px; }
+    .btn-save-mat {
+        padding: 7px 14px; background: var(--accent);
+        border: none; border-radius: 7px; color: white;
+        font-family: 'Manrope', sans-serif; font-size: 12px;
+        font-weight: 600; cursor: pointer;
+    }
+    .btn-cancel-edit {
+        padding: 7px 14px; background: var(--surface2);
+        border: 1px solid var(--border); border-radius: 7px;
+        color: var(--muted2); font-family: 'Manrope', sans-serif;
+        font-size: 12px; font-weight: 600; cursor: pointer;
+    }
     /* MATERIALS GRID */
     .materials-grid {
         display: grid;
@@ -124,9 +170,9 @@
 {% if materials %}
 <div class="materials-grid">
     {% for m in materials %}
-    <div class="material-card">
-        <div class="m-title">{{ m.title }}</div>
-        <div class="m-content">{{ m.content|linebreaks }}</div>
+        <div class="material-card" id="mat-{{ m.id }}">
+        <div class="m-title" id="mat-title-{{ m.id }}">{{ m.title }}</div>
+        <div class="m-content" id="mat-content-{{ m.id }}">{{ m.content|linebreaks }}</div>
         {% if m.file %}
             <a href="{{ m.file.url }}" target="_blank" class="file-link">
                 {% with m.file.name|lower as fname %}
@@ -138,13 +184,36 @@
                 {{ m.file.name|cut:"materials/" }}
             </a>
         {% endif %}
+
         <div class="m-footer">
             <div class="m-author">
                 <div class="author-avatar">{{ m.author.username|first|upper }}</div>
-                {{ m.author.username }}
+                {{ m.author.get_display_name }}
             </div>
-            <div class="m-date">{{ m.created_at|date:"d.m.Y" }}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div class="m-date">{{ m.created_at|date:"d.m.Y" }}</div>
+                {% if user.role == 'admin' or m.author == user %}
+                    <button class="btn-edit-mat" onclick="toggleEdit({{ m.id }})">✏️ Изменить</button>
+                    <button class="btn-del-mat"
+                            data-id="{{ m.id }}"
+                            data-url="{% url 'delete_material' m.id %}"
+                            onclick="deleteMat(this)">🗑 Удалить</button>
+                {% endif %}
+            </div>
         </div>
+
+        {% if user.role == 'admin' or m.author == user %}
+        <div class="edit-form" id="edit-form-{{ m.id }}">
+            <input type="text" id="edit-title-{{ m.id }}"
+                value="{{ m.title }}" placeholder="Название">
+            <textarea id="edit-content-{{ m.id }}"
+                    rows="3">{{ m.content }}</textarea>
+            <div class="edit-form-btns">
+                <button class="btn-save-mat" onclick="saveMat({{ m.id }}, '{% url 'update_material' m.id %}')">💾 Сохранить</button>
+                <button class="btn-cancel-edit" onclick="toggleEdit({{ m.id }})">Отмена</button>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
@@ -154,4 +223,65 @@
     <p>Материалов пока нет. Добавьте первый!</p>
 </div>
 {% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content
+    || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+function toggleEdit(id) {
+    document.getElementById('edit-form-' + id).classList.toggle('open');
+}
+
+async function deleteMat(btn) {
+    if (!confirm('Удалить материал?')) return;
+    const url = btn.dataset.url;
+    const id = btn.dataset.id;
+    const card = document.getElementById('mat-' + id);
+    card.style.opacity = '0.5';
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            card.style.transition = 'opacity 0.3s';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 300);
+        } else {
+            card.style.opacity = '1';
+            alert(json.message || 'Ошибка');
+        }
+    } catch(e) { card.style.opacity = '1'; }
+}
+
+async function saveMat(id, url) {
+    const title = document.getElementById('edit-title-' + id).value.trim();
+    const content = document.getElementById('edit-content-' + id).value.trim();
+    if (!title || !content) { alert('Заполните все поля'); return; }
+
+    const data = new FormData();
+    data.append('title', title);
+    data.append('content', content);
+    data.append('csrfmiddlewaretoken', CSRF);
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            document.getElementById('mat-title-' + id).textContent = json.title;
+            const contentEl = document.getElementById('mat-content-' + id);
+            contentEl.innerHTML = json.content.replace(/\n/g, '<br>');
+            document.getElementById('edit-form-' + id).classList.remove('open');
+        } else {
+            alert(json.message || 'Ошибка');
+        }
+    } catch(e) { alert('Ошибка соединения'); }
+}
+</script>
 {% endblock %}

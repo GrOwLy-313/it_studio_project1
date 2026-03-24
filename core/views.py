@@ -1526,3 +1526,39 @@ def archive_view(request):
         'student_filter_id': student_filter_id or '',
         'subject_filter_id': subject_filter_id or '',
     })
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def delete_material(request, material_id):
+    material = get_object_or_404(Material, id=material_id)
+    # Учитель может удалять только свои материалы
+    if request.user.role == 'teacher' and material.author != request.user:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Нет доступа'}, status=403)
+        raise PermissionDenied
+    material.delete()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'ok'})
+    return redirect('materials')
+
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def update_material(request, material_id):
+    material = get_object_or_404(Material, id=material_id)
+    if request.user.role == 'teacher' and material.author != request.user:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': 'Нет доступа'}, status=403)
+        raise PermissionDenied
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        file = request.FILES.get('file')
+        if title and content:
+            material.title = title
+            material.content = content
+            if file:
+                material.file = file
+            material.save()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'ok', 'title': material.title, 'content': material.content})
+    return redirect('materials')
