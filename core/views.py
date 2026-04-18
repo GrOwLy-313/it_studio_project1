@@ -13,17 +13,12 @@ import csv
 import uuid
 
 
-# ДОПУСТИМЫЕ СТАТУСЫ УРОКОВ И ДЗ
 VALID_LESSON_STATUSES = {'scheduled', 'done', 'canceled'}
 VALID_HOMEWORK_STATUSES = {'assigned', 'done', 'checked'}
 
 
 def _next_student_login():
-    """Генерирует следующий свободный логин вида student000001.
-    ИСПРАВЛЕНО: обёрнуто в select_for_update через транзакцию для защиты от гонки.
-    """
     import re
-    # Используем транзакцию + блокировку строк чтобы избежать дублей при параллельных запросах
     with transaction.atomic():
         existing = (
             User.objects.select_for_update()
@@ -58,13 +53,11 @@ def calendar_view(request):
     now = timezone.now()
     archive_threshold = now - timedelta(days=1)
 
-    # --- 1. АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРОШЕДШИХ УРОКОВ ---
     with transaction.atomic():
         Lesson.objects.select_for_update().filter(
             date_time__lt=now, status='scheduled'
         ).update(status='done')
 
-    # --- 2. ФИЛЬТРАЦИЯ УРОКОВ ---
     teacher_filter_id = request.GET.get('teacher_filter')
     student_filter_id = request.GET.get('student_filter')
     subject_filter_id = request.GET.get('subject_filter')
@@ -84,7 +77,7 @@ def calendar_view(request):
             lessons = lessons.filter(student_id=student_filter_id)
         if subject_filter_id:
             lessons = lessons.filter(subject_id=subject_filter_id)
-    else:  # Админ
+    else:
         lessons = Lesson.objects.filter(
             date_time__gte=archive_threshold
         ).select_related('subject', 'teacher', 'student').order_by('date_time')
@@ -106,7 +99,6 @@ def calendar_view(request):
             date_time__lte=now + timedelta(days=30)
         )
 
-    # --- 3. ОБРАБОТКА СОЗДАНИЯ НОВОГО ЗАНЯТИЯ ---
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
         subject_id = request.POST.get('subject')
         student_id = request.POST.get('student')
@@ -229,7 +221,6 @@ def calendar_view(request):
                 )
             return redirect('calendar')
 
-    # --- 4. ОГРАНИЧЕНИЕ ПРЕДМЕТОВ И СТУДЕНТОВ ---
     if request.user.role == 'admin':
         available_subjects = Subject.objects.all()
         students = User.objects.filter(role='student')
@@ -319,9 +310,10 @@ def delete_lesson(request, lesson_id):
                 teacher=lesson.teacher, subject=lesson.subject
             ).first()
             price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
-            User.objects.filter(id=lesson.student.id).update(
-                balance=models.F('balance') + price
-            )
+            if lesson.student:
+                User.objects.filter(id=lesson.student.id).update(
+                    balance=models.F('balance') + price
+                )
         lesson.delete()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -361,7 +353,6 @@ def chat_view(request, user_id):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def update_lesson_status(request, lesson_id, status):
-    # ИСПРАВЛЕНО: проверка валидности статуса
     if status not in VALID_LESSON_STATUSES:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
@@ -375,13 +366,15 @@ def update_lesson_status(request, lesson_id, status):
     price = rate_obj.rate if rate_obj else lesson.subject.price_per_lesson
 
     if lesson.status == 'done' and status != 'done':
-        User.objects.filter(id=lesson.student.id).update(
-            balance=models.F('balance') + price
-        )
+        if lesson.student:
+            User.objects.filter(id=lesson.student.id).update(
+                balance=models.F('balance') + price
+            )
     elif lesson.status != 'done' and status == 'done':
-        User.objects.filter(id=lesson.student.id).update(
-            balance=models.F('balance') - price
-        )
+        if lesson.student:
+            User.objects.filter(id=lesson.student.id).update(
+                balance=models.F('balance') - price
+            )
 
     lesson.status = status
     lesson.save()
@@ -437,8 +430,10 @@ def profile_view(request):
             current_rate = rate_obj.rate if rate_obj else Decimal('0.00')
             subtotal = current_rate * item['lesson_count']
             my_salary += subtotal
+            # Показываем "(удалён)" если ученик удалён
+            student_display = item['student__first_name'] or item['student__username'] or '(удалён)'
             teacher_stats.append({
-                'student__username': item['student__first_name'] or item['student__username'],
+                'student__username': student_display,
                 'subject__name': item['subject__name'],
                 'lesson_count': item['lesson_count'],
                 'rate': current_rate,
@@ -534,8 +529,6 @@ def admin_panel_view(request):
             password = request.POST.get('password')
             full_name = request.POST.get('student_fullname', '')
 
-            # ИСПРАВЛЕНО: проверяем username и password до создания объекта,
-            # чтобы переменная student всегда была определена перед использованием
             if not username or not password:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': 'Логин и пароль обязательны'})
@@ -583,7 +576,45 @@ def admin_panel_view(request):
 
         elif 'delete_user' in request.POST:
             user_id = request.POST.get('user_id')
-            User.objects.filter(id=user_id).delete()
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': 'Пользователь не найден'})
+                return redirect('admin_panel')
+
+            now = timezone.now()
+
+            if target_user.role == 'student':
+                # Удаляем только будущие запланированные занятия
+                Lesson.objects.filter(
+                    student=target_user,
+                    status='scheduled',
+                    date_time__gte=now
+                ).delete()
+                # Удаляем только незавершённые домашние задания
+                Homework.objects.filter(
+                    student=target_user,
+                    status='assigned'
+                ).delete()
+
+            elif target_user.role == 'teacher':
+                # Для учителя — тоже удаляем только будущие запланированные
+                Lesson.objects.filter(
+                    teacher=target_user,
+                    status='scheduled',
+                    date_time__gte=now
+                ).delete()
+                Homework.objects.filter(
+                    teacher=target_user,
+                    status='assigned'
+                ).delete()
+
+            # Удаляем пользователя — благодаря SET_NULL в модели Lesson
+            # все прошедшие уроки (done/canceled) останутся в БД,
+            # просто поля teacher/student станут NULL
+            target_user.delete()
+
             if is_ajax:
                 return JsonResponse({'status': 'ok', 'action': 'delete_user', 'user_id': user_id})
             return redirect('admin_panel')
@@ -602,7 +633,6 @@ def admin_panel_view(request):
                 if is_ajax:
                     return JsonResponse({'status': 'ok', 'action': 'create_subject',
                                          'id': subj.id, 'name': name})
-            # ИСПРАВЛЕНО: если name пустой — не пытаемся обратиться к subj
             else:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': 'Название не может быть пустым'})
@@ -653,14 +683,27 @@ def admin_panel_view(request):
             teacher_id = request.POST.get('teacher_id')
             subject_id = request.POST.get('subject_id')
             rate = request.POST.get('rate')
+            rate_obj = None
             if teacher_id and subject_id and rate:
-                TeacherRate.objects.update_or_create(
+                rate_obj, _ = TeacherRate.objects.update_or_create(
                     teacher_id=teacher_id,
                     subject_id=subject_id,
                     defaults={'rate': rate}
                 )
             if is_ajax:
-                return JsonResponse({'status': 'ok', 'action': 'set_rate'})
+                return JsonResponse({
+                    'status': 'ok',
+                    'action': 'set_rate',
+                    'rate_id': rate_obj.id if rate_obj else None,
+                })
+            return redirect('admin_panel')
+
+        # НОВОЕ: удаление ставки учителя
+        elif 'delete_rate' in request.POST:
+            rate_id = request.POST.get('rate_id')
+            TeacherRate.objects.filter(id=rate_id).delete()
+            if is_ajax:
+                return JsonResponse({'status': 'ok', 'action': 'delete_rate', 'rate_id': rate_id})
             return redirect('admin_panel')
 
         elif 'update_admin_profile' in request.POST:
@@ -842,20 +885,21 @@ def reschedule_lesson(request, lesson_id):
 
                 new_date_fmt = new_date.strftime('%d.%m.%Y %H:%M')
 
-                Notification.objects.create(
-                    user=lesson.student,
-                    text=f'Занятие "{lesson.subject.name}" перенесено '
-                         f'с {old_date} на {new_date_fmt}. '
-                         f'Учитель: {lesson.teacher.get_display_name()}'
-                )
+                if lesson.student:
+                    Notification.objects.create(
+                        user=lesson.student,
+                        text=f'Занятие "{lesson.subject.name}" перенесено '
+                             f'с {old_date} на {new_date_fmt}. '
+                             f'Учитель: {lesson.get_teacher_name()}'
+                    )
 
                 admins = User.objects.filter(role='admin')
                 for admin in admins:
                     Notification.objects.create(
                         user=admin,
-                        text=f'Учитель {lesson.teacher.get_display_name()} перенёс занятие '
+                        text=f'Учитель {lesson.get_teacher_name()} перенёл занятие '
                              f'"{lesson.subject.name}" '
-                             f'(ученик: {lesson.student.get_display_name()}) '
+                             f'(ученик: {lesson.get_student_name()}) '
                              f'с {old_date} на {new_date_fmt}'
                     )
 
@@ -895,8 +939,8 @@ def export_lessons_csv(request):
     for lesson in lessons:
         writer.writerow([
             lesson.date_time.strftime('%d.%m.%Y %H:%M'),
-            lesson.teacher.get_display_name(),
-            lesson.student.get_display_name(),
+            lesson.get_teacher_name(),
+            lesson.get_student_name(),
             lesson.subject.name,
             lesson.get_status_display(),
             lesson.subject.price_per_lesson if lesson.status == 'done' else 0
@@ -935,7 +979,7 @@ def reports_page(request):
         lessons_qs = done_period.select_related('teacher', 'subject', 'student').order_by('-date_time')
 
         lesson_list = list(lessons_qs)
-        teacher_ids = {l.teacher_id for l in lesson_list}
+        teacher_ids = {l.teacher_id for l in lesson_list if l.teacher_id}
         subject_ids = {l.subject_id for l in lesson_list}
         rates_qs = TeacherRate.objects.filter(
             teacher_id__in=teacher_ids, subject_id__in=subject_ids
@@ -950,7 +994,7 @@ def reports_page(request):
             profit = revenue - salary
             report_data.append({
                 'date': lesson.date_time,
-                'teacher': lesson.teacher.get_display_name(),
+                'teacher': lesson.get_teacher_name(),
                 'subject': lesson.subject.name,
                 'revenue': int(revenue),
                 'salary': int(salary),
@@ -1098,9 +1142,8 @@ def export_detailed_report(request):
     if subject_filter:
         lessons = lessons.filter(subject_id=subject_filter)
 
-    # ИСПРАВЛЕНО: загружаем все ставки одним запросом вместо N+1 в цикле
     lesson_list = list(lessons)
-    teacher_ids = {l.teacher_id for l in lesson_list}
+    teacher_ids = {l.teacher_id for l in lesson_list if l.teacher_id}
     subject_ids = {l.subject_id for l in lesson_list}
     rates_map = {
         (r.teacher_id, r.subject_id): r.rate
@@ -1123,8 +1166,8 @@ def export_detailed_report(request):
 
         writer.writerow([
             lesson.date_time.strftime('%d.%m.%Y %H:%M'),
-            lesson.teacher.get_display_name(),
-            lesson.student.get_display_name(),
+            lesson.get_teacher_name(),
+            lesson.get_student_name(),
             lesson.subject.name,
             revenue,
             salary,
@@ -1208,7 +1251,7 @@ def dashboard_view(request):
         .annotate(cnt=Count('id'))
         .order_by('-cnt')[:5]
     )
-    teacher_labels = [t['teacher__first_name'] or t['teacher__username'] for t in teacher_qs]
+    teacher_labels = [t['teacher__first_name'] or t['teacher__username'] or '(удалён)' for t in teacher_qs]
     teacher_data = [t['cnt'] for t in teacher_qs]
 
     return render(request, 'core/dashboard.html', {
@@ -1313,12 +1356,13 @@ def create_homework(request):
                 description=description,
                 due_date=due_date,
             )
-            Notification.objects.create(
-                user=hw.student,
-                text=f'Новое домашнее задание: "{title}" по предмету {hw.subject.name}. '
-                     f'Учитель: {request.user.get_display_name()}'
-                     + (f'. Срок: {due_date[:10].replace("-", ".")}' if due_date else '')
-            )
+            if hw.student:
+                Notification.objects.create(
+                    user=hw.student,
+                    text=f'Новое домашнее задание: "{title}" по предмету {hw.subject.name}. '
+                         f'Учитель: {request.user.get_display_name()}'
+                         + (f'. Срок: {due_date[:10].replace("-", ".")}' if due_date else '')
+                )
     return redirect('homework')
 
 
@@ -1327,10 +1371,11 @@ def mark_homework_done(request, hw_id):
     hw = get_object_or_404(Homework, id=hw_id, student=request.user)
     hw.status = 'done'
     hw.save()
-    Notification.objects.create(
-        user=hw.teacher,
-        text=f'Ученик {request.user.get_display_name()} выполнил задание "{hw.title}"'
-    )
+    if hw.teacher:
+        Notification.objects.create(
+            user=hw.teacher,
+            text=f'Ученик {request.user.get_display_name()} выполнил задание "{hw.title}"'
+        )
     return redirect('homework')
 
 
@@ -1345,11 +1390,12 @@ def check_homework(request, hw_id):
         hw.status = 'checked'
         hw.teacher_comment = comment
         hw.save()
-        Notification.objects.create(
-            user=hw.student,
-            text=f'Учитель проверил задание "{hw.title}"'
-                 + (f': {comment}' if comment else '')
-        )
+        if hw.student:
+            Notification.objects.create(
+                user=hw.student,
+                text=f'Учитель проверил задание "{hw.title}"'
+                     + (f': {comment}' if comment else '')
+            )
     return redirect('homework')
 
 
@@ -1368,7 +1414,6 @@ def delete_homework(request, hw_id):
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def update_homework_status(request, hw_id, status):
-    # ИСПРАВЛЕНО: проверка валидности статуса (была, оставлена явно)
     if status not in VALID_HOMEWORK_STATUSES:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
@@ -1462,7 +1507,7 @@ def archive_view(request):
             teacher=request.user,
             date_time__lt=archive_date
         )
-    else:  # admin
+    else:
         lessons = Lesson.objects.all().filter(date_time__lt=archive_date)
         teacher_filter = request.GET.get('teacher_filter')
         if teacher_filter:
@@ -1526,11 +1571,12 @@ def archive_view(request):
         'student_filter_id': student_filter_id or '',
         'subject_filter_id': subject_filter_id or '',
     })
+
+
 @login_required
 @user_passes_test(is_teacher_or_admin)
 def delete_material(request, material_id):
     material = get_object_or_404(Material, id=material_id)
-    # Учитель может удалять только свои материалы
     if request.user.role == 'teacher' and material.author != request.user:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'status': 'error', 'message': 'Нет доступа'}, status=403)

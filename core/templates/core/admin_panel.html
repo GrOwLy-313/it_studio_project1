@@ -58,7 +58,6 @@
     .assign-table td { padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
     .assign-table tr:last-child td { border-bottom: none; }
 
-    /* Скроллбар в списках */
     #teachersList::-webkit-scrollbar,
     #studentsList::-webkit-scrollbar,
     #subjectsList::-webkit-scrollbar,
@@ -73,12 +72,12 @@
     #studentsList::-webkit-scrollbar-thumb:hover,
     #subjectsList::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-    /* Таблица назначений — прокручиваемая */
     .assign-table-wrap { max-height: 320px; overflow-y: auto; padding-right: 4px; }
     .assign-table-wrap::-webkit-scrollbar { width: 4px; }
     .assign-table-wrap::-webkit-scrollbar-track { background: transparent; }
     .assign-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     .assign-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
     .toast {
         position: fixed; bottom: 24px; right: 24px; z-index: 9999;
         background: var(--green); color: white;
@@ -92,7 +91,6 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.error { background: var(--red); box-shadow: 0 4px 20px rgba(239,68,68,0.4); }
 
-    /* Профиль админа */
     .admin-profile-card {
         background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.08));
         border: 1px solid rgba(59,130,246,0.2);
@@ -112,49 +110,37 @@
     .admin-edit-row input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; flex: 1; transition: border-color 0.2s; }
     .admin-edit-row input:focus { border-color: var(--accent); }
     .btn-save-admin { padding: 8px 16px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+    /* Таблица ставок */
+    .rates-table { width: 100%; border-collapse: collapse; }
+    .rates-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .rates-table td { padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    .rates-table tr:last-child td { border-bottom: none; }
+
 @media (max-width: 768px) {
-    /* Основная сетка — в колонку */
     .grid-2 { grid-template-columns: 1fr !important; }
-
-    /* Внутренний грид направлений (форма + список) */
     .card.full > div[style*="grid-template-columns:1fr 2fr"],
-    .card.full > div[style*="grid-template-columns: 1fr 2fr"] {
-        display: block !important;
-    }
-
-    /* Внутренний грид назначений (форма + таблица) */
+    .card.full > div[style*="grid-template-columns: 1fr 2fr"] { display: block !important; }
     .card.full > div[style*="grid-template-columns:1fr 1fr"],
-    .card.full > div[style*="grid-template-columns: 1fr 1fr"] {
-        display: block !important;
-    }
-
-    /* Таблица назначений — под формой, не рядом */
+    .card.full > div[style*="grid-template-columns: 1fr 1fr"] { display: block !important; }
     .assign-table-wrap { margin-top: 20px; }
-
-    /* Форма назначения — в колонку */
     .assign-form { flex-direction: column; gap: 12px; }
     .assign-form select { width: 100%; }
-
-    /* Форма ставок — в колонку */
     .rates-form form { flex-direction: column; }
     .rates-form select { min-width: unset; width: 100%; }
     .rates-form input { width: 100%; }
     .btn-set { width: 100%; }
-
-    /* Направления — price-row разваливается на маленьком экране */
     .price-row { flex-direction: column; align-items: flex-start; gap: 10px; }
     .price-actions { flex-wrap: wrap; width: 100%; }
     .price-actions input { width: 90px; }
-
-    /* Таблица ставок — уменьшить паддинги */
     .assign-table th,
     .assign-table td { padding: 8px 10px; font-size: 13px; }
-
-    /* Профиль админа */
     .admin-profile-card { flex-direction: column; align-items: flex-start; gap: 12px; }
     .admin-edit-row { flex-direction: column; }
     .admin-edit-row input { width: 100%; }
     .btn-save-admin { width: 100%; }
+    .rates-table th,
+    .rates-table td { padding: 8px 10px; font-size: 13px; }
 }
 
 @media (max-width: 480px) {
@@ -165,7 +151,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- ТОСТ -->
 <div class="toast" id="toast"></div>
 
 <div class="page-header">
@@ -173,7 +158,7 @@
     <p>Пользователи, направления, ставки и назначения</p>
 </div>
 
-<!-- БАГ 4: Профиль администратора -->
+<!-- Профиль администратора -->
 <div class="admin-profile-card">
     <div class="admin-avatar">{{ user.username|first|upper }}</div>
     <div class="admin-profile-info">
@@ -282,14 +267,14 @@
             </div>
             {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Направлений пока нет</p>{% endfor %}
         </div>
-        </div><!-- /grid directions -->
+        </div>
     </div>
 
     <!-- НАЗНАЧЕНИЕ УЧЕНИКОВ -->
     <div class="card full">
         <h2>🔗 Назначить ученика учителям</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
-            <form onsubmit="ajaxForm(event, this)" data-action="assign_student">
+            <form onsubmit="assignStudent(event, this)">
                 {% csrf_token %}
                 <div class="assign-form">
                     <div>
@@ -327,7 +312,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
-            </div><!-- /assign-table-wrap -->
+            </div>
         </div>
     </div>
 
@@ -337,7 +322,7 @@
 <div class="card full">
     <h2>💰 Индивидуальные ставки учителей</h2>
     <div class="rates-form">
-        <form onsubmit="ajaxForm(event, this)" data-action="set_rate" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+        <form onsubmit="setRate(event, this)" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
             {% csrf_token %}
             <select name="teacher_id" required>
                 <option value="">— Учитель —</option>
@@ -347,32 +332,41 @@
                 <option value="">— Предмет —</option>
                 {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
             </select>
-            <input type="number" name="rate" placeholder="Ставка ₽">
+            <input type="number" name="rate" placeholder="Ставка ₽" min="1">
             <button type="submit" name="set_rate" class="btn-set">Назначить ставку</button>
         </form>
     </div>
-    <table>
-        <thead><tr><th>Учитель</th><th>Предмет</th><th>Ставка за урок</th></tr></thead>
+    <!-- Таблица ставок с кнопкой удаления -->
+    <table class="rates-table">
+        <thead>
+            <tr>
+                <th>Учитель</th>
+                <th>Предмет</th>
+                <th>Ставка за урок</th>
+                <th></th>
+            </tr>
+        </thead>
         <tbody id="ratesTable">
             {% for r in rates %}
-            <tr>
+            <tr id="rate-row-{{ r.id }}">
                 <td style="font-weight:600;">{% if r.teacher.first_name %}{{ r.teacher.first_name }}{% else %}{{ r.teacher.username }}{% endif %}</td>
                 <td>{{ r.subject.name }}</td>
                 <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
+                <td><button class="btn-del" onclick="deleteRate({{ r.id }}, this)">✕ Удалить</button></td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
+            <tr id="rates-empty"><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-// ── Тост ───────────────────────────────────────
 function showToast(msg, isError = false) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -382,7 +376,6 @@ function showToast(msg, isError = false) {
     t._timer = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── Форматировать число как цену: 900 → "900.00" ──
 function formatPrice(val) {
     return parseFloat(val).toFixed(2);
 }
@@ -455,7 +448,6 @@ document.getElementById('createStudentForm').addEventListener('submit', async (e
             list.querySelector('p')?.remove();
             list.appendChild(item);
             form.reset();
-            // Подставляем следующий авто-логин
             if (json.next_login) {
                 document.getElementById('studentLoginInput').value = json.next_login;
             }
@@ -489,7 +481,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', async (e
 async function deleteUser(btn) {
     const userId = btn.dataset.userId;
     const elemId = btn.dataset.elemId;
-    if (!confirm('Удалить пользователя?')) return;
+    if (!confirm('Удалить пользователя?\n\nПрошедшие занятия сохранятся в архиве и статистике.\nБудущие запланированные занятия будут удалены.')) return;
     const data = new FormData();
     data.append('csrfmiddlewaretoken', CSRF);
     data.append('user_id', userId);
@@ -504,7 +496,9 @@ async function deleteUser(btn) {
         if (json.status === 'ok') {
             const el = document.getElementById(elemId);
             if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
-            showToast('✓ Удалено');
+            showToast('✓ Пользователь удалён');
+        } else {
+            showToast('⚠ ' + (json.message || 'Ошибка'), true);
         }
     } catch(e) { showToast('Ошибка', true); }
 }
@@ -533,20 +527,16 @@ async function deleteSubject(btn) {
 }
 
 // ── Обновить цену направления ──────────────────
-// БАГ а): запретить пустое значение, форматировать как 900.00
 async function updatePrice(event, form) {
     event.preventDefault();
     const subjectId = form.dataset.subjectId;
     const priceInput = form.querySelector('input[name="new_price"]');
     const priceVal = priceInput.value.trim();
-
-    // Запрет пустого значения и нуля
     if (!priceVal || parseFloat(priceVal) <= 0) {
         showToast('Введите корректную цену', true);
         priceInput.focus();
         return;
     }
-
     const data = new FormData(form);
     data.append('update_price', '1');
     try {
@@ -558,18 +548,16 @@ async function updatePrice(event, form) {
         const json = await resp.json();
         if (json.status === 'ok') {
             const tag = document.getElementById(`price-tag-${subjectId}`);
-            // БАГ а): всегда показываем с сотыми (900 → "900.00 ₽")
             if (tag) tag.textContent = formatPrice(json.new_price) + ' ₽';
-            // Обновляем и поле ввода чтобы тоже показывало 900.00
             priceInput.value = formatPrice(json.new_price);
             showToast('✓ Цена обновлена');
-            // БАГ а): пересортировать направления по цене
             sortSubjectsByPrice();
+        } else {
+            showToast(json.message || 'Ошибка', true);
         }
     } catch(e) { showToast('Ошибка', true); }
 }
 
-// ── БАГ а): сортировка направлений по цене ─────
 function sortSubjectsByPrice() {
     const list = document.getElementById('subjectsList');
     if (!list) return;
@@ -582,11 +570,9 @@ function sortSubjectsByPrice() {
     rows.forEach(r => list.appendChild(r));
 }
 
-// ── БАГ а): обновление цвета без перезагрузки ──
 async function updateColor(event, form) {
     event.preventDefault();
-    const subjectId = form.querySelector('input[name="subject_id"]').value;
-    const colorVal  = form.querySelector('input[name="new_color"]').value;
+    const colorVal = form.querySelector('input[name="new_color"]').value;
     const data = new FormData(form);
     data.append('update_color', '1');
     try {
@@ -597,22 +583,20 @@ async function updateColor(event, form) {
         });
         const json = await resp.json();
         if (json.status === 'ok') {
-            // Обновляем цвет квадратика сразу
             form.querySelector('input[name="new_color"]').style.outline = `3px solid ${colorVal}`;
             showToast('✓ Цвет обновлён');
         }
     } catch(e) { showToast('Ошибка', true); }
 }
 
-// ── БАГ б): назначение ученика + обновление таблицы без перезагрузки ──
-document.querySelector('form[data-action="assign_student"]')?.addEventListener('submit', async (e) => {
+// ── Назначить ученика учителям ─────────────────
+async function assignStudent(e, form) {
     e.preventDefault();
-    const form = e.target;
     const data = new FormData(form);
     data.append('assign_student', '1');
 
     const studentSelect = form.querySelector('select[name="student_id"]');
-    const studentName   = studentSelect.options[studentSelect.selectedIndex]?.text || '';
+    const studentName = studentSelect.options[studentSelect.selectedIndex]?.text || '';
     const checkedTeachers = Array.from(form.querySelectorAll('input[name="teacher_ids"]:checked'));
 
     try {
@@ -624,18 +608,12 @@ document.querySelector('form[data-action="assign_student"]')?.addEventListener('
         const json = await resp.json();
         if (json.status === 'ok') {
             showToast('✓ Назначения сохранены');
-
-            // Удаляем старые строки этого ученика из таблицы
             const tbody = document.getElementById('assignTable');
             Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
                 if (tr.querySelector('td')?.textContent?.trim() === studentName) tr.remove();
             });
-            // Убираем "нет назначений"
             tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
-
-            // Добавляем новые строки
             if (checkedTeachers.length === 0) {
-                // Если не выбрано ни одного учителя — показать "нет" если таблица пустая
                 if (!tbody.querySelector('tr')) {
                     tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px;">Назначений пока нет</td></tr>';
                 }
@@ -651,20 +629,18 @@ document.querySelector('form[data-action="assign_student"]')?.addEventListener('
             form.reset();
         }
     } catch(e) { showToast('Ошибка', true); }
-});
+}
 
-// ── БАГ в): ставки учителей + обновление таблицы без перезагрузки ──
-document.querySelector('form[data-action="set_rate"]')?.addEventListener('submit', async (e) => {
+// ── Назначить ставку ───────────────────────────
+async function setRate(e, form) {
     e.preventDefault();
-    const form = e.target;
-
     const teacherSelect = form.querySelector('select[name="teacher_id"]');
     const subjectSelect = form.querySelector('select[name="subject_id"]');
-    const rateInput     = form.querySelector('input[name="rate"]');
+    const rateInput = form.querySelector('input[name="rate"]');
 
     const teacherName = teacherSelect.options[teacherSelect.selectedIndex]?.text || '';
     const subjectName = subjectSelect.options[subjectSelect.selectedIndex]?.text || '';
-    const rateVal     = rateInput.value.trim();
+    const rateVal = rateInput.value.trim();
 
     if (!rateVal || parseFloat(rateVal) <= 0) {
         showToast('Введите ставку', true);
@@ -685,31 +661,72 @@ document.querySelector('form[data-action="set_rate"]')?.addEventListener('submit
         if (json.status === 'ok') {
             showToast('✓ Ставка назначена');
             const tbody = document.getElementById('ratesTable');
-            tbody.querySelector('td[colspan]')?.closest('tr')?.remove();
+            document.getElementById('rates-empty')?.remove();
 
-            // БАГ в): если такая пара учитель+предмет уже есть — обновляем, иначе добавляем
+            // Если такая пара уже есть — обновляем строку
             let updated = false;
             Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
                 const tds = tr.querySelectorAll('td');
                 if (tds[0]?.textContent?.trim() === teacherName &&
                     tds[1]?.textContent?.trim() === subjectName) {
                     tds[2].textContent = formatPrice(rateVal) + ' ₽';
+                    // Обновляем rate_id на кнопке удаления
+                    tr.id = `rate-row-${json.rate_id}`;
+                    const delBtn = tr.querySelector('.btn-del');
+                    if (delBtn) delBtn.setAttribute('onclick', `deleteRate(${json.rate_id}, this)`);
                     updated = true;
                 }
             });
+
+            // Иначе добавляем новую строку
             if (!updated) {
                 const tr = document.createElement('tr');
+                tr.id = `rate-row-${json.rate_id}`;
                 tr.innerHTML = `
                     <td style="font-weight:600;">${teacherName}</td>
                     <td>${subjectName}</td>
                     <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">${formatPrice(rateVal)} ₽</td>
+                    <td><button class="btn-del" onclick="deleteRate(${json.rate_id}, this)">✕ Удалить</button></td>
                 `;
                 tbody.appendChild(tr);
             }
             form.reset();
         }
     } catch(e) { showToast('Ошибка', true); }
-});
+}
+
+// ── Удалить ставку учителя ─────────────────────
+async function deleteRate(rateId, btn) {
+    if (!confirm('Удалить эту ставку?')) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('rate_id', rateId);
+    data.append('delete_rate', '1');
+    try {
+        const resp = await fetch('/admin-panel/', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const row = document.getElementById(`rate-row-${rateId}`);
+            if (row) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => {
+                    row.remove();
+                    // Если таблица пуста — показать заглушку
+                    const tbody = document.getElementById('ratesTable');
+                    if (tbody && !tbody.querySelector('tr')) {
+                        tbody.innerHTML = '<tr id="rates-empty"><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>';
+                    }
+                }, 300);
+            }
+            showToast('✓ Ставка удалена');
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
 
 // ── Профиль администратора ─────────────────────
 async function saveAdminProfile() {
@@ -733,13 +750,12 @@ async function saveAdminProfile() {
     } catch(e) { showToast('Ошибка', true); }
 }
 
-// ── При загрузке: отформатировать все цены как X.XX ──
+// ── При загрузке: форматируем цены и сортируем ──
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tag-price').forEach(tag => {
         const val = parseFloat(tag.textContent);
         if (!isNaN(val)) tag.textContent = formatPrice(val) + ' ₽';
     });
-    // Начальная сортировка по цене
     sortSubjectsByPrice();
 });
 </script>

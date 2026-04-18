@@ -11,24 +11,14 @@ class User(AbstractUser):
     salary_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
-    # БАГ 4: приватная подпись — видна только тому, кто её добавил (через отдельную модель)
-    # first_name уже есть в AbstractUser — используем его как ФИО
-
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
 
     def get_display_name(self):
-        """Возвращает ФИО если задано, иначе логин."""
         return self.first_name.strip() if self.first_name and self.first_name.strip() else self.username
 
 
 class UserNote(models.Model):
-    """
-    Приватная подпись/описание пользователя.
-    author — кто добавил подпись (учитель или админ)
-    target — о ком подпись (ученик, другой учитель и т.д.)
-    Видна только автору.
-    """
     author = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='my_notes'
@@ -86,8 +76,17 @@ class Lesson(models.Model):
         ('canceled', 'Отменен'),
     ]
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="Направление")
-    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teacher_lessons')
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='student_lessons')
+    # SET_NULL чтобы при удалении пользователя уроки не удалялись
+    teacher = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='teacher_lessons'
+    )
+    student = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='student_lessons'
+    )
     date_time = models.DateTimeField(db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled', db_index=True)
     original_date_time = models.DateTimeField(null=True, blank=True)
@@ -101,7 +100,22 @@ class Lesson(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.subject.name} - {self.student.username}"
+        teacher_name = self.teacher.username if self.teacher else '(удалён)'
+        student_name = self.student.username if self.student else '(удалён)'
+        subject_name = self.subject.name if self.subject else '(удалён)'
+        return f"{subject_name} - {student_name}"
+
+    def get_teacher_name(self):
+        """Безопасное получение имени учителя — возвращает '(удалён)' если учитель удалён."""
+        if self.teacher:
+            return self.teacher.get_display_name()
+        return '(удалён)'
+
+    def get_student_name(self):
+        """Безопасное получение имени ученика — возвращает '(удалён)' если ученик удалён."""
+        if self.student:
+            return self.student.get_display_name()
+        return '(удалён)'
 
 
 class TeacherRate(models.Model):
@@ -141,8 +155,17 @@ class Homework(models.Model):
         ('checked', 'Проверено'),
     ]
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='homeworks', null=True, blank=True)
-    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_homeworks')
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_homeworks')
+    # SET_NULL чтобы при удалении пользователя ДЗ не удалялись
+    teacher = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='given_homeworks'
+    )
+    student = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='received_homeworks'
+    )
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     description = models.TextField()
@@ -152,4 +175,5 @@ class Homework(models.Model):
     teacher_comment = models.TextField(blank=True)
 
     def __str__(self):
-        return f'{self.title} → {self.student.username}'
+        student_name = self.student.username if self.student else '(удалён)'
+        return f'{self.title} → {student_name}'
