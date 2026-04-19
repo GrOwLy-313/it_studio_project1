@@ -11,7 +11,7 @@ SECRET_KEY = os.environ.get(
 )
 
 # ИСПРАВЛЕНО: дефолт 'False' — в продакшене DEBUG выключен, если не задана переменная
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = True
 
 if DEBUG:
     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
