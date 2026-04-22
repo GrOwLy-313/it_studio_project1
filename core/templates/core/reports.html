@@ -154,8 +154,16 @@
         .report-tabs { flex-wrap: wrap; }
     }
     @media (max-width: 600px) {
-        .stats-grid { grid-template-columns: 1fr; }
+        .stats-grid { grid-template-columns: 1fr 1fr; }
         .bar-cell { display: none; }
+        .report-tabs { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+        .report-tab { white-space: nowrap; }
+    }
+    @media (max-width: 480px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .report-tabs { gap: 6px; }
+        .report-tab { padding: 8px 14px; font-size: 13px; }
     }
 </style>
 {% endblock %}

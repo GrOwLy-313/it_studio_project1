@@ -138,6 +138,18 @@
     /* EMPTY STATE */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
     .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+
+    @media (max-width: 768px) {
+        .materials-grid { grid-template-columns: 1fr !important; }
+        .upload-card { padding: 18px; }
+        .upload-form-grid { grid-template-columns: 1fr !important; }
+        .upload-card .btn-create { width: 100%; }
+        .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+    @media (max-width: 480px) {
+        .material-card { padding: 14px; }
+        .material-card .m-title { font-size: 14px; }
+    }
 </style>
 {% endblock %}
 

@@ -144,8 +144,12 @@
 }
 
 @media (max-width: 480px) {
-    .card { padding: 16px; }
+    .card { padding: 14px; }
     .price-actions { gap: 6px; }
+    .assign-form select, .assign-form input { width: 100%; }
+    .rates-form form { flex-wrap: wrap; }
+    .admin-edit-row input { font-size: 16px !important; }
+    .grid-2 .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 </style>
 {% endblock %}

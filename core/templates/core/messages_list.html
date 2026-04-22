@@ -224,6 +224,20 @@
         font-size: 14px;
         display: none;
     }
+
+    @media (max-width: 768px) {
+        .messages-layout { grid-template-columns: 1fr !important; }
+        .contacts-panel { border-right: none; border-bottom: 1px solid var(--border); max-height: 300px; }
+        .search-input { font-size: 16px !important; }
+        .contact-item { padding: 10px 14px; }
+        .new-chat-panel { padding: 14px 16px; }
+        .new-search { font-size: 16px !important; }
+    }
+    @media (max-width: 480px) {
+        .contact-avatar { width: 36px; height: 36px; font-size: 14px; }
+        .contact-name { font-size: 13px; }
+        .contact-preview { font-size: 11px; }
+    }
 </style>
 {% endblock %}
 

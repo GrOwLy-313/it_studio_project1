@@ -480,4 +480,32 @@ tbody td { padding: 16px 18px; font-size: 14px; vertical-align: top; }
     .stat-card { padding: 12px 14px; }
     .stat-card .value { font-size: 20px; }
     .page-header h1 { font-size: 18px; }
+
+    /* Prevent buttons from overflowing on very small screens */
+    .btn { min-height: 44px; white-space: normal; text-align: center; justify-content: center; }
+    .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .card-header .btn { width: 100%; }
+
+    /* Table scroll hint */
+    .table-wrap::before {
+        content: '';
+        display: none;
+    }
+
+    /* Chat button wrap */
+    .chat-btn { white-space: normal; }
+
+    /* Status badge small */
+    .status-badge { font-size: 11px; padding: 4px 8px; }
+}
+
+/* ============================================================
+   VERY SMALL PHONES (≤ 360px)
+   ============================================================ */
+@media (max-width: 360px) {
+    .main { padding: 68px 10px 20px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-card .value { font-size: 18px; }
+    .page-header h1 { font-size: 16px; }
+    .btn { padding: 10px 14px; font-size: 13px; }
 }

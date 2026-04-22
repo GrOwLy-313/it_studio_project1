@@ -268,9 +268,9 @@
         <div class="hw-meta">
             <span class="hw-pill pill-subject">{{ hw.subject.name }}</span>
             {% if user.role != 'student' %}
-                <span class="hw-pill pill-student">🎓 {{ hw.student.get_display_name }}</span>
+                <span class="hw-pill pill-student">🎓 {% if hw.student %}{{ hw.student.get_display_name }}{% else %}(удалён){% endif %}</span>
             {% else %}
-                <span class="hw-pill pill-student">👨‍🏫 {{ hw.teacher.get_display_name }}</span>
+                <span class="hw-pill pill-student">👨‍🏫 {% if hw.teacher %}{{ hw.teacher.get_display_name }}{% else %}(удалён){% endif %}</span>
             {% endif %}
             {% if hw.due_date %}
                 <span class="hw-pill pill-due">📅 до {{ hw.due_date|date:"d.m.Y" }}</span>

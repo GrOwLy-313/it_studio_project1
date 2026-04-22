@@ -88,6 +88,24 @@
         .toolbar-select { width: 100%; }
         .btn-export { width: 100%; justify-content: center; }
     }
+    @media (max-width: 700px) {
+        .toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+        .toolbar-form { flex-direction: column; gap: 8px; }
+        .toolbar-group { flex-wrap: wrap; }
+        .toolbar-group .toolbar-label { width: 100%; }
+        .toolbar-actions { justify-content: stretch; flex-wrap: wrap; }
+        .toolbar-actions .btn-add-jump { flex: 1; justify-content: center; }
+        .toolbar-actions .btn-multiselect { flex: 1; }
+        .period-pills { width: 100%; }
+        .period-pill { flex: 1; text-align: center; }
+    }
+    @media (max-width: 480px) {
+        .toolbar { padding: 10px 12px; }
+        .toolbar-select { font-size: 14px !important; }
+        .btn-add-jump { font-size: 13px; }
+        .tabs { overflow-x: auto; width: 100%; }
+        .tab-btn { padding: 8px 14px; font-size: 13px; }
+    }
 
     /* TABLE */
     .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
@@ -277,9 +295,9 @@
             <div>
                 <div class="today-pill-subject">{{ lesson.subject.name }}</div>
                 <div class="today-pill-person">
-                    {% if user.role == 'student' %}{{ lesson.teacher.get_display_name }}
-                    {% elif user.role == 'teacher' %}{{ lesson.student.get_display_name }}
-                    {% else %}{{ lesson.teacher.get_display_name }} → {{ lesson.student.get_display_name }}{% endif %}
+                    {% if user.role == 'student' %}{{ lesson.get_teacher_name }}
+                    {% elif user.role == 'teacher' %}{{ lesson.get_student_name }}
+                    {% else %}{{ lesson.get_teacher_name }} → {{ lesson.get_student_name }}{% endif %}
                 </div>
             </div>
         </div>
@@ -457,11 +475,12 @@
                 {% if user.role != 'student' %}<td><span class="subject-pill">{{ lesson.subject.name }}</span></td>{% endif %}
                 <td style="font-weight:600;">
                     {% if user.role == 'student' %}
-                        {{ lesson.teacher.get_display_name }}
+                        {{ lesson.get_teacher_name }}
                     {% elif user.role == 'admin' %}
-                        <div>👨‍🏫 {{ lesson.teacher.get_display_name }}</div>
-                        <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.student.get_display_name }}</div>
+                        <div>👨‍🏫 {{ lesson.get_teacher_name }}</div>
+                        <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.get_student_name }}</div>
                     {% else %}
+                        {% if lesson.student %}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
                               data-display-name="{{ lesson.student.get_display_name|escape }}">
@@ -472,6 +491,9 @@
                                 {{ lesson.student.get_display_name }}
                             {% endif %}
                         </span>
+                        {% else %}
+                        <span style="color:var(--muted);font-style:italic;">(удалён)</span>
+                        {% endif %}
                     {% endif %}
                 </td>
                 <td>
@@ -514,8 +536,11 @@
                 </td>
                 {% if not is_archive %}
                 <td>
-                    {% if user.role == 'student' %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
-                    {% else %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% endif %}
+                    {% if user.role == 'student' %}
+                        {% if lesson.teacher %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>{% else %}<span style="color:var(--muted);font-size:12px;">(удалён)</span>{% endif %}
+                    {% else %}
+                        {% if lesson.student %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% else %}<span style="color:var(--muted);font-size:12px;">(удалён)</span>{% endif %}
+                    {% endif %}
                 </td>
                 {% endif %}
             </tr>
@@ -553,15 +578,17 @@
             <div class="lc-row">
                 <span class="lc-label">{% if user.role == 'admin' %}Участники{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</span>
                 <span style="font-weight:600;">
-                    {% if user.role == 'student' %}{{ lesson.teacher.get_display_name }}
-                    {% elif user.role == 'admin' %}👨‍🏫 {{ lesson.teacher.get_display_name }} &nbsp;·&nbsp; 🎓 {{ lesson.student.get_display_name }}
+                    {% if user.role == 'student' %}{{ lesson.get_teacher_name }}
+                    {% elif user.role == 'admin' %}👨‍🏫 {{ lesson.get_teacher_name }} &nbsp;·&nbsp; 🎓 {{ lesson.get_student_name }}
                     {% else %}
+                        {% if lesson.student %}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
                               data-display-name="{{ lesson.student.get_display_name|escape }}">
                             {% if student_notes %}{% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}{% endif %}
                             {% if not student_notes or not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
                         </span>
+                        {% else %}<span style="color:var(--muted);font-style:italic;">(удалён)</span>{% endif %}
                     {% endif %}
                 </span>
             </div>
@@ -576,8 +603,11 @@
             {% if not is_archive %}
             <div class="lc-row">
                 <span class="lc-label">Связь</span>
-                {% if user.role == 'student' %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>
-                {% else %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% endif %}
+                {% if user.role == 'student' %}
+                    {% if lesson.teacher %}<a href="{% url 'chat' lesson.teacher.id %}" class="chat-btn">💬 Учитель</a>{% else %}<span style="color:var(--muted);font-size:12px;">(удалён)</span>{% endif %}
+                {% else %}
+                    {% if lesson.student %}<a href="{% url 'chat' lesson.student.id %}" class="chat-btn">💬 Ученик</a>{% else %}<span style="color:var(--muted);font-size:12px;">(удалён)</span>{% endif %}
+                {% endif %}
             </div>
             {% endif %}
         </div>
