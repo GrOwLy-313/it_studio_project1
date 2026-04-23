@@ -105,9 +105,12 @@
         background: var(--surface); border: 1px solid var(--border);
         border-radius: 16px; padding: 28px; margin-bottom: 28px;
         transition: background 0.3s, border-color 0.3s;
+        overflow: hidden;
+        box-sizing: border-box;
+        width: 100%;
     }
     .add-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; align-items: end; width: 100%; box-sizing: border-box; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
     .form-group select,
@@ -145,16 +148,18 @@
     .stat-card .num { font-size: 22px; }
 
     /* Форма добавления */
-    .add-card { padding: 18px; margin-bottom: 20px; }
+    .add-card { padding: 16px; margin-bottom: 20px; overflow: hidden; }
     .form-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
+        width: 100%;
     }
     /* Убираем span 2 на мобиле */
     .form-grid .form-group[style*="span 2"] {
         grid-column: span 1 !important;
     }
-    .btn-create { width: 100%; }
+    .btn-create { width: 100%; min-height: 48px; font-size: 15px; }
+    .form-group select, .form-group input, .form-group textarea { font-size: 16px !important; width: 100%; box-sizing: border-box; }
 
     /* Карточки заданий */
     .hw-card { padding: 14px; }
@@ -268,9 +273,9 @@
         <div class="hw-meta">
             <span class="hw-pill pill-subject">{{ hw.subject.name }}</span>
             {% if user.role != 'student' %}
-                <span class="hw-pill pill-student">🎓 {% if hw.student %}{{ hw.student.get_display_name }}{% else %}(удалён){% endif %}</span>
+                <span class="hw-pill pill-student">🎓 {{ hw.get_student_name }}</span>
             {% else %}
-                <span class="hw-pill pill-student">👨‍🏫 {% if hw.teacher %}{{ hw.teacher.get_display_name }}{% else %}(удалён){% endif %}</span>
+                <span class="hw-pill pill-student">👨‍🏫 {{ hw.get_teacher_name }}</span>
             {% endif %}
             {% if hw.due_date %}
                 <span class="hw-pill pill-due">📅 до {{ hw.due_date|date:"d.m.Y" }}</span>

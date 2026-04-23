@@ -153,6 +153,7 @@
         .stats-grid { grid-template-columns: repeat(2, 1fr); }
         .report-tabs { flex-wrap: wrap; }
     }
+    .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     @media (max-width: 600px) {
         .stats-grid { grid-template-columns: 1fr 1fr; }
         .bar-cell { display: none; }
@@ -226,25 +227,27 @@
             <div class="sub">Каждый проведённый урок за выбранный период</div>
         </div>
     </div>
-    <table>
+    <div class="table-scroll-wrap">
+    <table style="min-width:560px;">
         <thead>
             <tr><th>Дата</th><th>Учитель</th><th>Предмет</th><th>Приход</th><th>Расход</th><th>Маржа</th></tr>
         </thead>
         <tbody>
             {% for item in report_data %}
             <tr>
-                <td class="val-mono">{{ item.date|date:"d.m.Y H:i" }}</td>
+                <td class="val-mono" style="white-space:nowrap;">{{ item.date|date:"d.m.Y H:i" }}</td>
                 <td style="font-weight:600;">{{ item.teacher }}</td>
-                <td><span class="subject-pill">{{ item.subject }}</span></td>
-                <td class="val-green">+{{ item.revenue }} ₽</td>
-                <td class="val-red">−{{ item.salary }} ₽</td>
-                <td class="val-blue">{{ item.profit }} ₽</td>
+                <td><span class="subject-pill" style="white-space:normal;word-break:break-word;">{{ item.subject }}</span></td>
+                <td class="val-green" style="white-space:nowrap;">+{{ item.revenue }} ₽</td>
+                <td class="val-red" style="white-space:nowrap;">−{{ item.salary }} ₽</td>
+                <td class="val-blue" style="white-space:nowrap;">{{ item.profit }} ₽</td>
             </tr>
             {% empty %}
             <tr class="empty-row"><td colspan="6">📭 Данных за выбранный период нет</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 
@@ -277,7 +280,8 @@
             <div class="sub">Количество уроков за выбранный период</div>
         </div>
     </div>
-    <table>
+    <div class="table-scroll-wrap">
+    <table style="min-width:500px;">
         <thead>
             <tr><th>#</th><th>Учитель</th><th>Проведено</th><th>Запланировано</th><th>Всего</th><th class="bar-cell">Загруженность</th></tr>
         </thead>
@@ -307,6 +311,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Загруженность по предметам -->
@@ -317,7 +322,8 @@
             <div class="sub">Сколько уроков по каждому предмету</div>
         </div>
     </div>
-    <table>
+    <div class="table-scroll-wrap">
+    <table style="min-width:360px;">
         <thead>
             <tr><th>#</th><th>Предмет</th><th>Уроков</th><th class="bar-cell">Доля</th></tr>
         </thead>
@@ -345,6 +351,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 
@@ -377,7 +384,8 @@
             <div class="sub">Кто отменяет больше всего</div>
         </div>
     </div>
-    <table>
+    <div class="table-scroll-wrap">
+    <table style="min-width:420px;">
         <thead>
             <tr><th>Учитель</th><th>Отмен</th><th>Всего уроков</th><th>Процент</th><th class="bar-cell">Уровень</th></tr>
         </thead>
@@ -405,6 +413,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Отмены по ученикам -->
@@ -415,7 +424,8 @@
             <div class="sub">Кто чаще всего отменяет занятия</div>
         </div>
     </div>
-    <table>
+    <div class="table-scroll-wrap">
+    <table style="min-width:420px;">
         <thead>
             <tr><th>Ученик</th><th>Отмен</th><th>Всего уроков</th><th>Процент</th><th class="bar-cell">Уровень</th></tr>
         </thead>

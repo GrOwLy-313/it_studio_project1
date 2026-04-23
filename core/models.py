@@ -91,6 +91,9 @@ class Lesson(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled', db_index=True)
     original_date_time = models.DateTimeField(null=True, blank=True)
     group_id = models.UUIDField(null=True, blank=True, db_index=True, verbose_name="ID серии")
+    # Снапшоты имён — заполняются перед удалением пользователя
+    teacher_name_snapshot = models.CharField(max_length=200, blank=True, default='')
+    student_name_snapshot = models.CharField(max_length=200, blank=True, default='')
 
     class Meta:
         indexes = [
@@ -106,16 +109,16 @@ class Lesson(models.Model):
         return f"{subject_name} - {student_name}"
 
     def get_teacher_name(self):
-        """Безопасное получение имени учителя — возвращает '(удалён)' если учитель удалён."""
+        """Безопасное получение имени учителя. Возвращает снапшот если учитель удалён."""
         if self.teacher:
             return self.teacher.get_display_name()
-        return '(удалён)'
+        return self.teacher_name_snapshot or '(неизвестно)'
 
     def get_student_name(self):
-        """Безопасное получение имени ученика — возвращает '(удалён)' если ученик удалён."""
+        """Безопасное получение имени ученика. Возвращает снапшот если ученик удалён."""
         if self.student:
             return self.student.get_display_name()
-        return '(удалён)'
+        return self.student_name_snapshot or '(неизвестно)'
 
 
 class TeacherRate(models.Model):
@@ -173,7 +176,22 @@ class Homework(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='assigned')
     created_at = models.DateTimeField(auto_now_add=True)
     teacher_comment = models.TextField(blank=True)
+    # Снапшоты имён — заполняются перед удалением пользователя
+    teacher_name_snapshot = models.CharField(max_length=200, blank=True, default='')
+    student_name_snapshot = models.CharField(max_length=200, blank=True, default='')
 
     def __str__(self):
-        student_name = self.student.username if self.student else '(удалён)'
+        student_name = self.get_student_name()
         return f'{self.title} → {student_name}'
+
+    def get_teacher_name(self):
+        """Безопасное получение имени учителя ДЗ."""
+        if self.teacher:
+            return self.teacher.get_display_name()
+        return self.teacher_name_snapshot or '(неизвестно)'
+
+    def get_student_name(self):
+        """Безопасное получение имени ученика ДЗ."""
+        if self.student:
+            return self.student.get_display_name()
+        return self.student_name_snapshot or '(неизвестно)'

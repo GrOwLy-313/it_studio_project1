@@ -48,6 +48,17 @@
     .admin-link { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, var(--accent), #2563eb); border-radius: 12px; color: white; text-decoration: none; font-weight: 700; font-size: 14px; transition: all 0.2s; }
     .admin-link:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(59,130,246,0.35); }
 
+    /* Балансы мобильные */
+    .balance-cards-mobile { display: none; padding: 0 16px 16px; }
+    .balance-row-mobile { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .balance-row-mobile:last-child { border-bottom: none; }
+    .balance-info { display: flex; flex-direction: column; gap: 2px; }
+    .balance-name { font-weight: 700; font-size: 14px; }
+    .balance-amount { font-size: 14px; font-weight: 700; }
+    .recharge-form-mobile { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .recharge-form-mobile input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 14px; font-family: 'Manrope', sans-serif; outline: none; width: 80px; min-height: 40px; }
+    .recharge-form-mobile .btn-recharge { white-space: nowrap; min-height: 40px; }
+
     @media (max-width: 768px) {
         .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
         .stat-card { padding: 14px 16px; }
@@ -61,10 +72,17 @@
         .recharge-form input { flex: 1; width: auto; }
         .btn-recharge { flex: 1; }
         .admin-link { width: 100%; justify-content: center; }
+        /* Переключаем между таблицей и карточками */
+        .balance-table-desktop { display: none; }
+        .balance-cards-mobile { display: block; }
     }
     @media (max-width: 480px) {
         .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
         .stat-card .value { font-size: 20px; }
+        .balance-row-mobile { flex-direction: column; align-items: flex-start; }
+        .recharge-form-mobile { width: 100%; }
+        .recharge-form-mobile input { flex: 1; width: auto; }
+        .recharge-form-mobile .btn-recharge { flex: 1; }
     }
 </style>
 {% endblock %}
@@ -159,7 +177,8 @@
 
     <div class="card">
         <div class="card-header"><h2>💳 Балансы учеников</h2></div>
-        <table>
+        <!-- Десктоп таблица -->
+        <table class="balance-table-desktop">
             <thead>
                 <tr><th>Ученик</th><th>Баланс</th><th>Пополнить</th></tr>
             </thead>
@@ -182,6 +201,23 @@
                 {% endfor %}
             </tbody>
         </table>
+        <!-- Мобильные карточки -->
+        <div class="balance-cards-mobile">
+            {% for s in students %}
+            <div class="balance-row-mobile">
+                <div class="balance-info">
+                    <div class="balance-name">{{ s.get_display_name }}</div>
+                    <div class="{% if s.balance < 0 %}balance-negative{% else %}balance-positive{% endif %} balance-amount">{{ s.balance }} ₽</div>
+                </div>
+                <form method="post" class="recharge-form-mobile">
+                    {% csrf_token %}
+                    <input type="hidden" name="student_id" value="{{ s.id }}">
+                    <input type="number" name="amount" placeholder="Сумма" required min="1">
+                    <button type="submit" name="recharge_balance" class="btn-recharge">+ Пополнить</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 
     <div style="text-align:center;margin-top:8px;">

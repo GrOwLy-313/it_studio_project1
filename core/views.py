@@ -610,6 +610,16 @@ def admin_panel_view(request):
                     status='assigned'
                 ).delete()
 
+            # Сохраняем имя пользователя во все связанные записи ПЕРЕД удалением,
+            # чтобы в отчётах и расписании отображалось реальное имя
+            display_name = target_user.get_display_name()
+            if target_user.role == 'student':
+                Lesson.objects.filter(student=target_user).update(student_name_snapshot=display_name)
+                Homework.objects.filter(student=target_user).update(student_name_snapshot=display_name)
+            elif target_user.role == 'teacher':
+                Lesson.objects.filter(teacher=target_user).update(teacher_name_snapshot=display_name)
+                Homework.objects.filter(teacher=target_user).update(teacher_name_snapshot=display_name)
+
             # Удаляем пользователя — благодаря SET_NULL в модели Lesson
             # все прошедшие уроки (done/canceled) останутся в БД,
             # просто поля teacher/student станут NULL

@@ -143,13 +143,31 @@
     .rates-table td { padding: 8px 10px; font-size: 13px; }
 }
 
+    /* Форма назначения ставок */
+    .rates-form-inner {
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%;
+    }
+    .rates-form-inner select,
+    .rates-form-inner input[type="number"] {
+        flex: 1; min-width: 130px;
+    }
+    .rates-form-inner .btn-set { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+    .rates-form-inner { flex-direction: column; align-items: stretch; }
+    .rates-form-inner select,
+    .rates-form-inner input[type="number"],
+    .rates-form-inner .btn-set { width: 100%; min-width: unset; }
+    .rates-table th,
+    .rates-table td { padding: 8px 10px; font-size: 13px; }
+}
 @media (max-width: 480px) {
     .card { padding: 14px; }
     .price-actions { gap: 6px; }
     .assign-form select, .assign-form input { width: 100%; }
-    .rates-form form { flex-wrap: wrap; }
     .admin-edit-row input { font-size: 16px !important; }
     .grid-2 .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .btn-del { padding: 7px 10px; font-size: 12px; }
 }
 </style>
 {% endblock %}
@@ -326,7 +344,7 @@
 <div class="card full">
     <h2>💰 Индивидуальные ставки учителей</h2>
     <div class="rates-form">
-        <form onsubmit="setRate(event, this)" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+        <form onsubmit="setRate(event, this)" class="rates-form-inner">
             {% csrf_token %}
             <select name="teacher_id" required>
                 <option value="">— Учитель —</option>
@@ -341,13 +359,14 @@
         </form>
     </div>
     <!-- Таблица ставок с кнопкой удаления -->
-    <table class="rates-table">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="rates-table" style="min-width:420px;">
         <thead>
             <tr>
                 <th>Учитель</th>
                 <th>Предмет</th>
                 <th>Ставка за урок</th>
-                <th></th>
+                <th style="min-width:110px;"></th>
             </tr>
         </thead>
         <tbody id="ratesTable">
@@ -356,13 +375,14 @@
                 <td style="font-weight:600;">{% if r.teacher.first_name %}{{ r.teacher.first_name }}{% else %}{{ r.teacher.username }}{% endif %}</td>
                 <td>{{ r.subject.name }}</td>
                 <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">{{ r.rate }} ₽</td>
-                <td><button class="btn-del" onclick="deleteRate({{ r.id }}, this)">✕ Удалить</button></td>
+                <td style="white-space:nowrap;"><button class="btn-del" onclick="deleteRate({{ r.id }}, this)" style="white-space:nowrap;">✕ Удалить</button></td>
             </tr>
             {% empty %}
             <tr id="rates-empty"><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Ставки не назначены</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 {% endblock %}
