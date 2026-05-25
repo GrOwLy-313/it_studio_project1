@@ -285,6 +285,14 @@ def calendar_view(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
+    from collections import OrderedDict
+    lessons_by_day = OrderedDict()
+    for lesson in page_obj:
+        day = lesson.date_time.date()
+        if day not in lessons_by_day:
+            lessons_by_day[day] = []
+        lessons_by_day[day].append(lesson)
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
         'lessons_by_day': lessons_by_day,
