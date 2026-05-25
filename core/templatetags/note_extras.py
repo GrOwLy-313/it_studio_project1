@@ -18,8 +18,10 @@ def get_item_exists(dictionary, key):
         return False
     return key in dictionary or str(key) in dictionary
 
+
 @register.filter
 def dict_get(dictionary, key):
-    """Получить значение из словаря по строковому ключу."""    if not dictionary:
+    """Получить значение из словаря по строковому ключу."""
+    if not dictionary:
         return None
     return dictionary.get(str(key))
