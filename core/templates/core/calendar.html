@@ -695,9 +695,8 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Ученик</label>
-                <select name="student" id="studentSelect" required>
-                    <option value="">— Выберите —</option>
+                <label>Ученики <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--muted)">(можно выбрать несколько)</span></label>
+                <select name="student" id="studentSelect" multiple required style="min-height:90px;">
                     {% for u in students %}
                     <option value="{{ u.id }}" data-display-name="{{ u.get_display_name }}">
                         {% if user.role == 'teacher' %}
@@ -713,6 +712,7 @@
                     </option>
                     {% endfor %}
                 </select>
+                <span class="form-hint">Ctrl/Cmd + клик для выбора нескольких</span>
             </div>
             <div class="form-group">
                 <label>Дата и время</label>
