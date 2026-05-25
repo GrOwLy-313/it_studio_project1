@@ -214,6 +214,12 @@
     .lesson-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
     .lesson-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
     .group-badge { display: inline-block; background: rgba(99,102,241,0.15); color: #818cf8; border-radius: 5px; font-size: 11px; font-weight: 700; padding: 2px 7px; margin-left: 6px; vertical-align: middle; }
+    .checkbox-student-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface2); }
+    .checkbox-student-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px; cursor: pointer; transition: background 0.15s; user-select: none; }
+    .checkbox-student-item:hover { background: var(--surface); }
+    .checkbox-student-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .checkbox-student-name { font-size: 14px; font-weight: 500; }
+    .checkbox-student-item:has(input:checked) { background: rgba(99,102,241,0.1); }
 
     /* PAGINATION */
     .pagination-wrap { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -779,14 +785,18 @@
                 </select>
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label>Ученики <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--muted)">(удерживайте Ctrl/Cmd для выбора нескольких)</span></label>
-                <select name="student" multiple required style="min-height:110px;">
+                <label>Ученики</label>
+                <div class="checkbox-student-list">
                     {% for u in students %}
-                    <option value="{{ u.id }}">
-                        {% if user.role == 'teacher' and student_notes %}{% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}{% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}{% else %}{{ u.get_display_name }}{% endif %}
-                    </option>
+                    <label class="checkbox-student-item">
+                        <input type="checkbox" name="student" value="{{ u.id }}" class="group-student-cb">
+                        <span class="checkbox-student-name">
+                            {% if user.role == 'teacher' and student_notes %}{% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}{% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}{% else %}{{ u.get_display_name }}{% endif %}
+                        </span>
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
+                <div id="group-student-error" style="color:#f87171;font-size:12px;display:none;margin-top:6px;">Выберите хотя бы одного ученика</div>
             </div>
             <div class="form-group">
                 <label>Дата и время</label>
@@ -800,7 +810,7 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;">
             {% if conflict_error %}<div class="conflict-error">{{ conflict_error }}</div>{% endif %}
-            <button type="submit" class="btn-create">✓ Создать групповое занятие</button>
+            <button type="button" class="btn-create" onclick="submitGroupForm(this)">✓ Создать групповое занятие</button>
         </div>
     </form>
 </div>
@@ -833,6 +843,18 @@
         btn.classList.add('active');
         document.getElementById('form-individual').style.display = tab === 'individual' ? '' : 'none';
         document.getElementById('form-group').style.display = tab === 'group' ? '' : 'none';
+    }
+
+    function submitGroupForm(btn) {
+        const form = document.getElementById('form-group');
+        const checked = form.querySelectorAll('input[name="student"]:checked');
+        const err = document.getElementById('group-student-error');
+        if (checked.length === 0) {
+            err.style.display = 'block';
+            return;
+        }
+        err.style.display = 'none';
+        form.submit();
     }
 
     // ── Массовый выбор ────────────────────────────

@@ -242,11 +242,6 @@ def calendar_view(request):
         notes_qs = UserNote.objects.filter(author=request.user)
         student_notes = {n.target_id: n.text for n in notes_qs}
 
-    from django.core.paginator import Paginator
-    paginator = Paginator(lessons, 20)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-
     local_now = timezone.localtime(now)
     today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = local_now.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -261,31 +256,34 @@ def calendar_view(request):
         today_qs = today_qs.filter(teacher=request.user)
     today_lessons = list(today_qs)
 
+    # Дедупликация групповых занятий: одна запись на группу (group_id + date_time)
+    # Для каждого group_key оставляем только первую запись, собираем список учеников
     from collections import OrderedDict
-    lessons_by_day = OrderedDict()
-    for lesson in page_obj:
-        day = lesson.date_time.date()
-        if day not in lessons_by_day:
-            lessons_by_day[day] = []
-        lessons_by_day[day].append(lesson)
+    group_students = {}   # group_key -> [имена учеников]
+    group_student_ids = {}  # group_key -> [id учеников]
+    seen_group_keys = set()
+    deduplicated_lessons = []
+    for lesson in lessons:
+        if lesson.group_id:
+            gkey = str(lesson.group_id) + '_' + lesson.date_time.strftime('%Y%m%d%H%M')
+            if gkey not in group_students:
+                group_students[gkey] = []
+                group_student_ids[gkey] = []
+            if lesson.student:
+                name = lesson.student.get_display_name()
+                if name not in group_students[gkey]:
+                    group_students[gkey].append(name)
+                    group_student_ids[gkey].append(lesson.student.id)
+            if gkey not in seen_group_keys:
+                seen_group_keys.add(gkey)
+                deduplicated_lessons.append(lesson)
+        else:
+            deduplicated_lessons.append(lesson)
 
-    # Для групповых занятий: собираем всех учеников одной группы (одного group_id + date_time)
-    # Ключ: (group_id, date_time) -> список учеников
-    group_students = {}
-    page_group_ids = [l.group_id for l in page_obj if l.group_id]
-    if page_group_ids:
-        group_lessons = Lesson.objects.filter(
-            group_id__in=page_group_ids
-        ).select_related('student').order_by('date_time')
-        for gl in group_lessons:
-            if gl.group_id:
-                key = str(gl.group_id) + '_' + gl.date_time.strftime('%Y%m%d%H%M')
-                if key not in group_students:
-                    group_students[key] = []
-                if gl.student:
-                    name = gl.student.get_display_name()
-                    if name not in group_students[key]:
-                        group_students[key].append(name)
+    from django.core.paginator import Paginator
+    paginator = Paginator(deduplicated_lessons, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
