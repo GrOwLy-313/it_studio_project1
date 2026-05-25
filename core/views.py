@@ -101,7 +101,7 @@ def calendar_view(request):
 
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
         subject_id = request.POST.get('subject')
-        student_id = request.POST.get('student')
+        student_ids = request.POST.getlist('student')
         teacher_id = request.POST.get('teacher')
         start_date_str = request.POST.get('date_time')
 
@@ -110,9 +110,9 @@ def calendar_view(request):
         except (ValueError, TypeError):
             iterations = 1
 
-        if subject_id and student_id and start_date_str:
+        if subject_id and student_ids and start_date_str:
             subject = Subject.objects.get(id=subject_id)
-            student = User.objects.get(id=student_id)
+            selected_students = list(User.objects.filter(id__in=student_ids))
 
             if request.user.role == 'admin':
                 teacher = User.objects.get(id=teacher_id)
@@ -131,13 +131,13 @@ def calendar_view(request):
             for i in range(iterations):
                 lesson_time = start_date + timedelta(weeks=i)
 
-                exact_dup = Lesson.objects.filter(
-                    teacher=teacher, student=student, subject=subject,
-                    date_time=lesson_time
-                ).exists()
-                if exact_dup:
-                    duplicates.append(lesson_time.strftime('%d.%m.%Y %H:%M'))
-                    continue
+                for student in selected_students:
+                    exact_dup = Lesson.objects.filter(
+                        teacher=teacher, student=student, subject=subject,
+                        date_time=lesson_time
+                    ).exists()
+                    if exact_dup:
+                        duplicates.append(f'{student.get_display_name()} {lesson_time.strftime("%d.%m.%Y %H:%M")}')
 
                 conflict = Lesson.objects.filter(
                     teacher=teacher,
@@ -158,7 +158,7 @@ def calendar_view(request):
 
                 if request.user.role == 'admin':
                     available_subjects = Subject.objects.all()
-                    students = User.objects.filter(role='student')
+                    form_students = User.objects.filter(role='student')
                 else:
                     assigned_ids = TeacherRate.objects.filter(
                         teacher=request.user
@@ -166,10 +166,10 @@ def calendar_view(request):
                     available_subjects = Subject.objects.filter(
                         models.Q(id__in=assigned_ids) | models.Q(is_universal=True)
                     )
-                    student_ids = TeacherStudent.objects.filter(
+                    ts_student_ids = TeacherStudent.objects.filter(
                         teacher=request.user
                     ).values_list('student_id', flat=True)
-                    students = User.objects.filter(id__in=student_ids)
+                    form_students = User.objects.filter(id__in=ts_student_ids)
 
                 page_lessons = Lesson.objects.filter(
                     teacher=teacher,
@@ -198,7 +198,7 @@ def calendar_view(request):
                     'paginator': paginator_err,
                     'subjects': available_subjects,
                     'all_subjects': Subject.objects.all().order_by('name'),
-                    'students': students,
+                    'students': form_students,
                     'teachers': User.objects.filter(role='teacher'),
                     'period_filter': 'all',
                     'conflict_error': conflict_str,
@@ -209,16 +209,17 @@ def calendar_view(request):
                     'subject_filter_id': '',
                 })
 
-            series_group_id = uuid.uuid4() if iterations > 1 else None
+            series_group_id = uuid.uuid4() if (iterations > 1 or len(selected_students) > 1) else None
             for i in range(iterations):
-                Lesson.objects.create(
-                    subject=subject,
-                    student=student,
-                    teacher=teacher,
-                    date_time=start_date + timedelta(weeks=i),
-                    status='scheduled',
-                    group_id=series_group_id,
-                )
+                for student in selected_students:
+                    Lesson.objects.create(
+                        subject=subject,
+                        student=student,
+                        teacher=teacher,
+                        date_time=start_date + timedelta(weeks=i),
+                        status='scheduled',
+                        group_id=series_group_id,
+                    )
             return redirect('calendar')
 
     if request.user.role == 'admin':
@@ -268,6 +269,24 @@ def calendar_view(request):
             lessons_by_day[day] = []
         lessons_by_day[day].append(lesson)
 
+    # Для групповых занятий: собираем всех учеников одной группы (одного group_id + date_time)
+    # Ключ: (group_id, date_time) -> список учеников
+    group_students = {}
+    page_group_ids = [l.group_id for l in page_obj if l.group_id]
+    if page_group_ids:
+        group_lessons = Lesson.objects.filter(
+            group_id__in=page_group_ids
+        ).select_related('student').order_by('date_time')
+        for gl in group_lessons:
+            if gl.group_id:
+                key = str(gl.group_id) + '_' + gl.date_time.strftime('%Y%m%d%H%M')
+                if key not in group_students:
+                    group_students[key] = []
+                if gl.student:
+                    name = gl.student.get_display_name()
+                    if name not in group_students[key]:
+                        group_students[key].append(name)
+
     return render(request, 'core/calendar.html', {
         'lessons': page_obj,
         'lessons_by_day': lessons_by_day,
@@ -283,6 +302,7 @@ def calendar_view(request):
         'teacher_filter_id': teacher_filter_id or '',
         'student_filter_id': student_filter_id or '',
         'subject_filter_id': subject_filter_id or '',
+        'group_students': group_students,
     })
 
 
