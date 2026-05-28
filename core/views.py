@@ -27,14 +27,9 @@ def _is_ajax(request):
 
 
 def _get_subjects_and_students(user):
-    """
-    Возвращает (available_subjects, students) в зависимости от роли пользователя.
-    Вынесено отдельно, чтобы не дублировать одинаковый код в нескольких местах
-    calendar_view.
-    """
     if user.role == 'admin':
         available_subjects = Subject.objects.all()
-        students = User.objects.filter(role='student')
+        students = User.objects.filter(role='student', is_finished=False)
     else:
         assigned_ids = TeacherRate.objects.filter(
             teacher=user
@@ -45,7 +40,7 @@ def _get_subjects_and_students(user):
         student_ids = TeacherStudent.objects.filter(
             teacher=user
         ).values_list('student_id', flat=True)
-        students = User.objects.filter(id__in=student_ids)
+        students = User.objects.filter(id__in=student_ids, is_finished=False)
     return available_subjects, students
 
 
