@@ -214,6 +214,7 @@
             <button type="submit" name="create_teacher" class="btn-blue">+ Зарегистрировать учителя</button>
         </form>
         <div style="margin-top:20px;max-height:320px;overflow-y:auto;padding-right:4px;" id="teachersList">
+            <input type="text" placeholder="🔍 Поиск по имени или логину..." oninput="filterList('teachersList', this.value)" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-family:'Manrope',sans-serif;font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box;position:sticky;top:0;z-index:1;">
             {% for t in teachers %}
             <div class="list-item" id="teacher-{{ t.id }}">
                 <div>
@@ -237,6 +238,7 @@
             <button type="submit" name="create_student" class="btn-green">+ Зарегистрировать ученика</button>
         </form>
         <div style="margin-top:20px;max-height:320px;overflow-y:auto;padding-right:4px;" id="studentsList">
+            <input type="text" placeholder="🔍 Поиск по имени или логину..." oninput="filterList('studentsList', this.value)" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-family:'Manrope',sans-serif;font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box;position:sticky;top:0;z-index:1;">
             {% for s in students %}
             <div class="list-item" id="student-{{ s.id }}" {% if s.is_finished %}style="opacity:0.6;"{% endif %}>
                 <div>
@@ -858,5 +860,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     sortSubjectsByPrice();
 });
+
+// ── Поиск по спискам учителей и учеников ──
+function filterList(listId, query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll(`#${listId} .list-item`).forEach(item => {
+        const name  = item.querySelector('.item-name')?.textContent?.toLowerCase() || '';
+        const login = item.querySelector('.item-sub')?.textContent?.toLowerCase()  || '';
+        item.style.display = (!q || name.includes(q) || login.includes(q)) ? '' : 'none';
+    });
+}
 </script>
 {% endblock %}

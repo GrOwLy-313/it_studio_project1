@@ -123,6 +123,30 @@
     .btn-multiselect:hover { background: rgba(239,68,68,0.15); }
     .btn-multiselect.active { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #ef4444; }
 
+    /* КНОПКА ЗАМЕТКИ К ЗАНЯТИЮ */
+    .btn-note { padding: 5px 9px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25); border-radius: 6px; color: #a78bfa; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; margin-top: 8px; display: block; width: 100%; text-align: center; }
+    .btn-note:hover { background: rgba(139,92,246,0.2); }
+    .btn-note.has-note { background: rgba(139,92,246,0.18); border-color: rgba(139,92,246,0.5); font-weight: 700; }
+    .lc-actions .btn-note { margin-top: 0; }
+
+    /* МОДАЛЬНОЕ ОКНО ЗАМЕТКИ */
+    .note-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; align-items: center; justify-content: center; }
+    .note-modal-overlay.open { display: flex; }
+    .note-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 460px; margin: 0 16px; }
+    .note-modal-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    .note-modal-info { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+    .nm-subject { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .nm-date { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+    .nm-people { font-size: 13px; color: var(--muted); }
+    .note-modal-textarea { width: 100%; min-height: 110px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px; font-family: 'Manrope', sans-serif; font-size: 14px; outline: none; resize: vertical; transition: border-color 0.2s; box-sizing: border-box; }
+    .note-modal-textarea:focus { border-color: var(--accent); }
+    .note-modal-textarea::placeholder { color: var(--muted); }
+    .note-modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .note-modal-save { flex: 1; padding: 10px; background: var(--accent); border: none; border-radius: 8px; color: white; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    .note-modal-save:hover { background: #2563eb; }
+    .note-modal-cancel { padding: 10px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--muted2); font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .note-modal-cancel:hover { border-color: var(--accent); color: var(--text); }
+
     /* Чекбоксы в строках */
     .cb-col { width: 36px; }
     .lesson-cb { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
@@ -442,6 +466,7 @@
         </div>
     </form>
     {% if user.role == 'admin' %}<a href="{% url 'export_detailed_report' %}?period=month{% if teacher_filter_id %}&teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}&student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}&subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export">📥 Экспорт отчёта</a>{% endif %}
+    {% if user.role == 'admin' %}<a href="{% url 'export_schedule_pdf' %}{% if teacher_filter_id %}?teacher_filter={{ teacher_filter_id }}{% endif %}{% if student_filter_id %}{% if teacher_filter_id %}&{% else %}?{% endif %}student_filter={{ student_filter_id }}{% endif %}{% if subject_filter_id %}{% if teacher_filter_id or student_filter_id %}&{% else %}?{% endif %}subject_filter={{ subject_filter_id }}{% endif %}" class="btn-export" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.3);color:#fca5a5;">📄 PDF расписание</a>{% endif %}
     {% if user.role != 'student' %}<button type="button" class="btn-multiselect" id="btnMultiSelect" onclick="toggleMultiSelect()">☑ Выбрать</button>{% endif %}
     {% if user.role != 'student' %}<a href="#add-lesson-form" class="btn-add-jump">➕ Добавить занятие</a>{% endif %}
 </div>
@@ -522,6 +547,17 @@
                         {% if user.role == 'admin' or lesson.teacher == user %}
                         <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить</button>
                         {% endif %}
+                        <button class="btn-note {% if lesson.notes %}has-note{% endif %}"
+                            data-lesson-id="{{ lesson.id }}"
+                            data-subject="{{ lesson.subject.name|escapejs }}"
+                            data-date="{{ lesson.date_time|date:'d.m.Y H:i' }}"
+                            data-teacher="{{ lesson.get_teacher_name|escapejs }}"
+                            data-student="{{ lesson.get_student_name|escapejs }}"
+                            data-notes="{{ lesson.notes|escapejs }}"
+                            onclick="openNoteModal(this)"
+                            title="{% if lesson.notes %}📝 {{ lesson.notes|truncatechars:60 }}{% else %}Добавить заметку к занятию{% endif %}">
+                            {% if lesson.notes %}📝 Заметка{% else %}📋 Заметка{% endif %}
+                        </button>
                     </div>
                     {% else %}
                     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -636,6 +672,17 @@
             {% if user.role == 'admin' or lesson.teacher == user %}
             <button class="btn-delete-lesson" data-lesson-id="{{ lesson.id }}" data-group-id="{{ lesson.group_id }}" onclick="deleteLesson(this)">🗑 Удалить занятие</button>
             {% endif %}
+            <button class="btn-note {% if lesson.notes %}has-note{% endif %}"
+                data-lesson-id="{{ lesson.id }}"
+                data-subject="{{ lesson.subject.name|escapejs }}"
+                data-date="{{ lesson.date_time|date:'d.m.Y H:i' }}"
+                data-teacher="{{ lesson.get_teacher_name|escapejs }}"
+                data-student="{{ lesson.get_student_name|escapejs }}"
+                data-notes="{{ lesson.notes|escapejs }}"
+                onclick="openNoteModal(this)"
+                title="{% if lesson.notes %}📝 {{ lesson.notes|truncatechars:60 }}{% else %}Добавить заметку{% endif %}">
+                {% if lesson.notes %}📝 Заметка{% else %}📋 Заметка{% endif %}
+            </button>
         </div>
         {% elif is_archive and user.role in 'teacher admin' %}
         <div class="lc-actions" style="padding-top:10px;margin-top:10px;border-top:1px solid var(--border);">
@@ -741,6 +788,23 @@
     </form>
 </div>
 {% endif %}
+
+<!-- МОДАЛ ЗАМЕТКИ К ЗАНЯТИЮ -->
+<div class="note-modal-overlay" id="noteModalOverlay" onclick="closeNoteModal(event)">
+    <div class="note-modal">
+        <div class="note-modal-title">📝 Заметка к занятию</div>
+        <div class="note-modal-info">
+            <div class="nm-subject" id="nmSubject"></div>
+            <div class="nm-date" id="nmDate"></div>
+            <div class="nm-people" id="nmPeople"></div>
+        </div>
+        <textarea class="note-modal-textarea" id="noteModalText" placeholder="Напишите заметку к этому занятию..."></textarea>
+        <div class="note-modal-actions">
+            <button class="note-modal-save" onclick="saveNoteModal()">💾 Сохранить</button>
+            <button class="note-modal-cancel" onclick="closeNoteModalBtn()">Отмена</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -1037,6 +1101,71 @@
         now.setDate(now.getDate() + 1);
         const pad = n => String(n).padStart(2, '0');
         inp.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T16:00`;
+    });
+
+    // ── Заметки к занятию ─────────────────────────
+    let _activeNoteBtn = null;
+
+    function openNoteModal(btn) {
+        _activeNoteBtn = btn;
+        document.getElementById('nmSubject').textContent = '📚 ' + (btn.dataset.subject || '');
+        document.getElementById('nmDate').textContent    = '📅 ' + (btn.dataset.date || '');
+        document.getElementById('nmPeople').textContent  = '👨\u200d🏫 ' + (btn.dataset.teacher || '') + '   ·   🎓 ' + (btn.dataset.student || '');
+        document.getElementById('noteModalText').value   = btn.dataset.notes || '';
+        document.getElementById('noteModalOverlay').classList.add('open');
+        setTimeout(() => document.getElementById('noteModalText').focus(), 60);
+    }
+
+    function closeNoteModal(event) {
+        if (event.target === document.getElementById('noteModalOverlay')) closeNoteModalBtn();
+    }
+
+    function closeNoteModalBtn() {
+        document.getElementById('noteModalOverlay').classList.remove('open');
+        _activeNoteBtn = null;
+    }
+
+    async function saveNoteModal() {
+        if (!_activeNoteBtn) return;
+        const lessonId = _activeNoteBtn.dataset.lessonId;
+        const text = document.getElementById('noteModalText').value.trim();
+        const saveBtn = document.querySelector('.note-modal-save');
+        const origText = saveBtn.textContent;
+        saveBtn.textContent = '...';
+        saveBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', CSRF);
+        fd.append('notes', text);
+
+        try {
+            const resp = await fetch(`/lesson/${lessonId}/note/`, {
+                method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd
+            });
+            if (resp.ok) {
+                _activeNoteBtn.dataset.notes = text;
+                const hasNote = !!text;
+                _activeNoteBtn.classList.toggle('has-note', hasNote);
+                _activeNoteBtn.textContent = hasNote ? '📝 Заметка' : '📋 Заметка';
+                _activeNoteBtn.title = hasNote ? ('📝 ' + text.substring(0, 60)) : 'Добавить заметку к занятию';
+                closeNoteModalBtn();
+            } else {
+                alert('Ошибка сохранения заметки');
+            }
+        } catch(e) {
+            alert('Ошибка соединения');
+        } finally {
+            saveBtn.textContent = origText;
+            saveBtn.disabled = false;
+        }
+    }
+
+    // Esc закрывает модал заметки
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            const overlay = document.getElementById('noteModalOverlay');
+            if (overlay && overlay.classList.contains('open')) closeNoteModalBtn();
+        }
     });
 </script>
 {% endblock %}

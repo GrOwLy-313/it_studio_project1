@@ -1690,3 +1690,177 @@ def update_material(request, material_id):
         if _is_ajax(request):
             return JsonResponse({'status': 'ok', 'title': material.title, 'content': material.content})
     return redirect('materials')
+
+
+@login_required
+@user_passes_test(is_teacher_or_admin)
+def save_lesson_note(request, lesson_id):
+    """Сохраняет текстовую заметку к занятию."""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error'}, status=405)
+
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+
+    # Учитель может редактировать заметки только к своим занятиям
+    if request.user.role == 'teacher' and lesson.teacher != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Нет доступа'}, status=403)
+
+    notes = request.POST.get('notes', '').strip()
+    lesson.notes = notes
+    lesson.save(update_fields=['notes'])
+
+    if _is_ajax(request):
+        return JsonResponse({'status': 'ok', 'notes': notes})
+    return redirect('calendar')
+
+
+@login_required
+def export_schedule_pdf(request):
+    """Экспортирует расписание в PDF-файл."""
+    if request.user.role != 'admin':
+        return HttpResponse("Доступ запрещён", status=403)
+
+    try:
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib import colors
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+    except ImportError:
+        return HttpResponse(
+            "Для экспорта PDF установите библиотеку: pip install reportlab",
+            status=500,
+            content_type='text/plain; charset=utf-8'
+        )
+
+    import io
+    import os
+
+    # Регистрируем шрифт с поддержкой кириллицы
+    font_name = 'Helvetica'
+    font_paths = [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+    ]
+    for fp in font_paths:
+        if os.path.exists(fp):
+            try:
+                pdfmetrics.registerFont(TTFont('CyrFont', fp))
+                font_name = 'CyrFont'
+            except Exception:
+                pass
+            break
+
+    # Фильтры
+    lessons = Lesson.objects.all().select_related(
+        'teacher', 'student', 'subject'
+    ).order_by('date_time')
+
+    teacher_filter = request.GET.get('teacher_filter')
+    student_filter = request.GET.get('student_filter')
+    subject_filter = request.GET.get('subject_filter')
+    status_filter  = request.GET.get('status_filter', 'all')
+
+    if teacher_filter:
+        lessons = lessons.filter(teacher_id=teacher_filter)
+    if student_filter:
+        lessons = lessons.filter(student_id=student_filter)
+    if subject_filter:
+        lessons = lessons.filter(subject_id=subject_filter)
+    if status_filter != 'all':
+        lessons = lessons.filter(status=status_filter)
+
+    lesson_list = list(lessons)
+
+    # Генерируем PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=15 * mm, rightMargin=15 * mm,
+        topMargin=15 * mm, bottomMargin=15 * mm,
+    )
+
+    title_style = ParagraphStyle(
+        'Title', fontName=font_name, fontSize=14,
+        leading=18, spaceAfter=4 * mm, textColor=colors.HexColor('#1e293b')
+    )
+    sub_style = ParagraphStyle(
+        'Sub', fontName=font_name, fontSize=9,
+        textColor=colors.HexColor('#64748b'), spaceAfter=7 * mm
+    )
+
+    elements = []
+    elements.append(Paragraph('Расписание занятий — АЙтишник', title_style))
+    elements.append(Paragraph(
+        f'Сформировано: {timezone.localtime(timezone.now()).strftime("%d.%m.%Y %H:%M")}  |  '
+        f'Записей: {len(lesson_list)}',
+        sub_style
+    ))
+
+    STATUS_MAP = {
+        'scheduled': 'Запланирован',
+        'done':      'Проведён',
+        'canceled':  'Отменён',
+    }
+
+    header = ['Дата и время', 'Учитель', 'Ученик', 'Направление', 'Статус', 'Заметка']
+    data = [header]
+
+    for lesson in lesson_list:
+        data.append([
+            lesson.date_time.strftime('%d.%m.%Y\n%H:%M'),
+            lesson.get_teacher_name(),
+            lesson.get_student_name(),
+            lesson.subject.name,
+            STATUS_MAP.get(lesson.status, lesson.status),
+            lesson.notes or '—',
+        ])
+
+    col_widths = [32 * mm, 48 * mm, 48 * mm, 45 * mm, 35 * mm, 62 * mm]
+
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    header_bg = colors.HexColor('#1e40af')
+    alt_bg    = colors.HexColor('#f8fafc')
+
+    ts = TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), header_bg),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), colors.white),
+        ('FONTNAME',      (0, 0), (-1, -1), font_name),
+        ('FONTSIZE',      (0, 0), (-1, 0), 9),
+        ('FONTSIZE',      (0, 1), (-1, -1), 8),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [colors.white, alt_bg]),
+        ('GRID',          (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ALIGN',         (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('WORDWRAP',      (0, 0), (-1, -1), True),
+    ])
+
+    # Цвет статуса в колонке "Статус"
+    for i, lesson in enumerate(lesson_list, start=1):
+        if lesson.status == 'done':
+            ts.add('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#059669'))
+        elif lesson.status == 'canceled':
+            ts.add('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#ef4444'))
+
+    table.setStyle(ts)
+    elements.append(table)
+
+    if not lesson_list:
+        elements.append(Spacer(1, 6 * mm))
+        elements.append(Paragraph('Занятий по выбранным фильтрам не найдено.', sub_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="itishnik_schedule.pdf"'
+    return response

@@ -95,6 +95,7 @@ class Lesson(models.Model):
     # Снапшоты имён — заполняются перед удалением пользователя
     teacher_name_snapshot = models.CharField(max_length=200, blank=True, default='')
     student_name_snapshot = models.CharField(max_length=200, blank=True, default='')
+    notes = models.TextField(blank=True, default='', verbose_name='Заметка к занятию')
 
     class Meta:
         indexes = [

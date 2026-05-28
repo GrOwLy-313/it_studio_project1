@@ -273,86 +273,57 @@
 
     <div class="contacts-card" id="contactsList">
 
-        {% if users_with_info %}
+        {% for item in users_with_info %}
+        <a href="{% url 'chat' item.user.id %}"
+           class="contact-item {% if item.unread_count > 0 %}has-unread{% endif %}"
+           data-name="{{ item.user.get_display_name|lower }}"
+           data-role="{{ item.user.role }}"
+           data-unread="{{ item.unread_count }}">
 
-            {% for item in users_with_info %}
-            <a href="{% url 'chat' item.user.id %}"
-               class="contact-item {% if item.unread_count > 0 %}has-unread{% endif %}"
-               data-name="{{ item.user.get_display_name|lower }}"
-               data-role="{{ item.user.role }}"
-               data-unread="{{ item.unread_count }}">
+            <div class="avatar-wrap">
+                <div class="avatar {{ item.user.role }}">
+                    {{ item.user.get_display_name|first|upper }}
+                </div>
+                {% if item.last_message %}
+                    <div class="avatar-online"></div>
+                {% endif %}
+            </div>
 
-                <div class="avatar-wrap">
-                    <div class="avatar {{ item.user.role }}">
-                        {{ item.user.get_display_name|first|upper }}
+            <div class="contact-content">
+                <div class="contact-top">
+                    <div>
+                        <span class="contact-name">{{ item.user.get_display_name }}</span>
+                        <span class="contact-role role-{{ item.user.role }}">
+                            {{ item.user.get_role_display }}
+                        </span>
                     </div>
                     {% if item.last_message %}
-                        <div class="avatar-online"></div>
+                        <span class="contact-time">{{ item.last_time }}</span>
                     {% endif %}
                 </div>
-
-                <div class="contact-content">
-                    <div class="contact-top">
-                        <div>
-                            <span class="contact-name">{{ item.user.get_display_name }}</span>
-                            <span class="contact-role role-{{ item.user.role }}">
-                                {{ item.user.get_role_display }}
-                            </span>
-                        </div>
+                <div class="contact-bottom">
+                    <span class="contact-preview">
                         {% if item.last_message %}
-                            <span class="contact-time">{{ item.last_time }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="contact-bottom">
-                        <span class="contact-preview">
-                            {% if item.last_message %}
-                                {% if item.last_message.sender == user %}
-                                    <span class="preview-me">Вы: </span>
-                                {% endif %}
-                                {{ item.last_message.text|truncatechars:45 }}
-                            {% else %}
-                                <span style="font-style:italic;">Нет сообщений — начните диалог</span>
+                            {% if item.last_message.sender == user %}
+                                <span class="preview-me">Вы: </span>
                             {% endif %}
-                        </span>
-                        {% if item.unread_count > 0 %}
-                            <span class="unread-badge">{{ item.unread_count }}</span>
+                            {{ item.last_message.text|truncatechars:45 }}
+                        {% else %}
+                            <span style="font-style:italic;">Нет сообщений — начните диалог</span>
                         {% endif %}
-                    </div>
+                    </span>
+                    {% if item.unread_count > 0 %}
+                        <span class="unread-badge">{{ item.unread_count }}</span>
+                    {% endif %}
                 </div>
-            </a>
-            {% endfor %}
-
-        {% else %}
-
-            {% for u in users %}
-            <a href="{% url 'chat' u.id %}"
-               class="contact-item"
-               data-name="{{ u.get_display_name|lower }}"
-               data-role="{{ u.role }}"
-               data-unread="0">
-                <div class="avatar-wrap">
-                    <div class="avatar {{ u.role }}">{{ u.get_display_name|first|upper }}</div>
-                </div>
-                <div class="contact-content">
-                    <div class="contact-top">
-                        <div>
-                            <span class="contact-name">{{ u.get_display_name }}</span>
-                            <span class="contact-role role-{{ u.role }}">{{ u.get_role_display }}</span>
-                        </div>
-                    </div>
-                    <div class="contact-bottom">
-                        <span class="contact-preview" style="font-style:italic;">Нет сообщений — начните диалог</span>
-                    </div>
-                </div>
-            </a>
-            {% empty %}
-            <div class="empty">
-                <div class="big">📭</div>
-                <p>Контактов пока нет</p>
             </div>
-            {% endfor %}
-
-        {% endif %}
+        </a>
+        {% empty %}
+        <div class="empty">
+            <div class="big">📭</div>
+            <p>Контактов пока нет</p>
+        </div>
+        {% endfor %}
 
         <div class="no-results" id="noResults">
             🔍 Ничего не найдено
