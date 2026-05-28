@@ -11,6 +11,8 @@ urlpatterns = [
     path('', views.calendar_view, name='calendar'),
     path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('post-login/', views.post_login_redirect, name='post_login_redirect'),
+    path('student/<int:student_id>/toggle-finished/', views.toggle_student_finished, name='toggle_student_finished'),
     path('chat/<int:user_id>/', views.chat_view, name='chat'),
     path('lesson/<int:lesson_id>/status/<str:status>/', views.update_lesson_status, name='update_status'),
     path('lesson/delete/<int:lesson_id>/', views.delete_lesson, name='delete_lesson'), # НОВОЕ

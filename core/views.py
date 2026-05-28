@@ -17,6 +17,14 @@ VALID_LESSON_STATUSES = {'scheduled', 'done', 'canceled'}
 VALID_HOMEWORK_STATUSES = {'assigned', 'done', 'checked'}
 
 
+@login_required
+def post_login_redirect(request):
+    """Редирект после логина: администратор → дашборд, остальные → календарь."""
+    if request.user.role == 'admin':
+        return redirect('dashboard')
+    return redirect('calendar')
+
+
 def _next_student_login():
     import re
     with transaction.atomic():
@@ -101,7 +109,7 @@ def calendar_view(request):
 
     if request.method == 'POST' and request.user.role in ['teacher', 'admin']:
         subject_id = request.POST.get('subject')
-        student_ids = request.POST.getlist('student')
+        student_id = request.POST.get('student')
         teacher_id = request.POST.get('teacher')
         start_date_str = request.POST.get('date_time')
 
@@ -110,9 +118,17 @@ def calendar_view(request):
         except (ValueError, TypeError):
             iterations = 1
 
-        if subject_id and student_ids and start_date_str:
+        if subject_id and student_id and start_date_str:
             subject = Subject.objects.get(id=subject_id)
-            selected_students = list(User.objects.filter(id__in=student_ids))
+            student = User.objects.get(id=student_id)
+
+            # Запрещаем создавать занятия с завершёнными учениками
+            if student.is_finished:
+                is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                msg = f'Ученик «{student.get_display_name()}» имеет статус «Завершён» — новые занятия с ним создавать нельзя.'
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': msg})
+                return redirect('calendar')
 
             if request.user.role == 'admin':
                 teacher = User.objects.get(id=teacher_id)
@@ -131,13 +147,13 @@ def calendar_view(request):
             for i in range(iterations):
                 lesson_time = start_date + timedelta(weeks=i)
 
-                for student in selected_students:
-                    exact_dup = Lesson.objects.filter(
-                        teacher=teacher, student=student, subject=subject,
-                        date_time=lesson_time
-                    ).exists()
-                    if exact_dup:
-                        duplicates.append(f'{student.get_display_name()} {lesson_time.strftime("%d.%m.%Y %H:%M")}')
+                exact_dup = Lesson.objects.filter(
+                    teacher=teacher, student=student, subject=subject,
+                    date_time=lesson_time
+                ).exists()
+                if exact_dup:
+                    duplicates.append(lesson_time.strftime('%d.%m.%Y %H:%M'))
+                    continue
 
                 conflict = Lesson.objects.filter(
                     teacher=teacher,
@@ -158,7 +174,7 @@ def calendar_view(request):
 
                 if request.user.role == 'admin':
                     available_subjects = Subject.objects.all()
-                    form_students = User.objects.filter(role='student')
+                    students = User.objects.filter(role='student')
                 else:
                     assigned_ids = TeacherRate.objects.filter(
                         teacher=request.user
@@ -166,10 +182,10 @@ def calendar_view(request):
                     available_subjects = Subject.objects.filter(
                         models.Q(id__in=assigned_ids) | models.Q(is_universal=True)
                     )
-                    ts_student_ids = TeacherStudent.objects.filter(
+                    student_ids = TeacherStudent.objects.filter(
                         teacher=request.user
                     ).values_list('student_id', flat=True)
-                    form_students = User.objects.filter(id__in=ts_student_ids)
+                    students = User.objects.filter(id__in=student_ids)
 
                 page_lessons = Lesson.objects.filter(
                     teacher=teacher,
@@ -198,7 +214,7 @@ def calendar_view(request):
                     'paginator': paginator_err,
                     'subjects': available_subjects,
                     'all_subjects': Subject.objects.all().order_by('name'),
-                    'students': form_students,
+                    'students': students,
                     'teachers': User.objects.filter(role='teacher'),
                     'period_filter': 'all',
                     'conflict_error': conflict_str,
@@ -209,17 +225,16 @@ def calendar_view(request):
                     'subject_filter_id': '',
                 })
 
-            series_group_id = uuid.uuid4() if (iterations > 1 or len(selected_students) > 1) else None
+            series_group_id = uuid.uuid4() if iterations > 1 else None
             for i in range(iterations):
-                for student in selected_students:
-                    Lesson.objects.create(
-                        subject=subject,
-                        student=student,
-                        teacher=teacher,
-                        date_time=start_date + timedelta(weeks=i),
-                        status='scheduled',
-                        group_id=series_group_id,
-                    )
+                Lesson.objects.create(
+                    subject=subject,
+                    student=student,
+                    teacher=teacher,
+                    date_time=start_date + timedelta(weeks=i),
+                    status='scheduled',
+                    group_id=series_group_id,
+                )
             return redirect('calendar')
 
     if request.user.role == 'admin':
@@ -242,6 +257,11 @@ def calendar_view(request):
         notes_qs = UserNote.objects.filter(author=request.user)
         student_notes = {n.target_id: n.text for n in notes_qs}
 
+    from django.core.paginator import Paginator
+    paginator = Paginator(lessons, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     local_now = timezone.localtime(now)
     today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = local_now.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -255,35 +275,6 @@ def calendar_view(request):
     elif request.user.role == 'teacher':
         today_qs = today_qs.filter(teacher=request.user)
     today_lessons = list(today_qs)
-
-    # Дедупликация групповых занятий: одна запись на группу (group_id + date_time)
-    # Для каждого group_key оставляем только первую запись, собираем список учеников
-    from collections import OrderedDict
-    group_students = {}   # group_key -> [имена учеников]
-    group_student_ids = {}  # group_key -> [id учеников]
-    seen_group_keys = set()
-    deduplicated_lessons = []
-    for lesson in lessons:
-        if lesson.group_id:
-            gkey = str(lesson.group_id) + '_' + lesson.date_time.strftime('%Y%m%d%H%M')
-            if gkey not in group_students:
-                group_students[gkey] = []
-                group_student_ids[gkey] = []
-            if lesson.student:
-                name = lesson.student.get_display_name()
-                if name not in group_students[gkey]:
-                    group_students[gkey].append(name)
-                    group_student_ids[gkey].append(lesson.student.id)
-            if gkey not in seen_group_keys:
-                seen_group_keys.add(gkey)
-                deduplicated_lessons.append(lesson)
-        else:
-            deduplicated_lessons.append(lesson)
-
-    from django.core.paginator import Paginator
-    paginator = Paginator(deduplicated_lessons, 20)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
 
     from collections import OrderedDict
     lessons_by_day = OrderedDict()
@@ -308,7 +299,6 @@ def calendar_view(request):
         'teacher_filter_id': teacher_filter_id or '',
         'student_filter_id': student_filter_id or '',
         'subject_filter_id': subject_filter_id or '',
-        'group_students': group_students,
     })
 
 
@@ -764,6 +754,21 @@ def admin_panel_view(request):
         'teacher_students': TeacherStudent.objects.select_related('teacher', 'student').all(),
         'next_student_login': _next_student_login(),
     })
+
+
+@login_required
+@user_passes_test(is_admin)
+def toggle_student_finished(request, student_id):
+    """Переключает статус 'завершён' для ученика."""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    student = get_object_or_404(User, id=student_id, role='student')
+    student.is_finished = not student.is_finished
+    student.save(update_fields=['is_finished'])
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_ajax:
+        return JsonResponse({'status': 'ok', 'is_finished': student.is_finished, 'student_id': student_id})
+    return redirect('admin_panel')
 
 
 @login_required

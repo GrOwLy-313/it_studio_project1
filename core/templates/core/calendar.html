@@ -209,17 +209,6 @@
     .form-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .btn-create { padding: 11px 20px; background: linear-gradient(135deg, var(--green), #059669); border: none; border-radius: 10px; color: white; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; min-height: 44px; }
     .btn-create:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
-    .lesson-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-    .lesson-tab { padding: 8px 18px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.18s; }
-    .lesson-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .lesson-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
-    .group-badge { display: inline-block; background: rgba(99,102,241,0.15); color: #818cf8; border-radius: 5px; font-size: 11px; font-weight: 700; padding: 2px 7px; margin-left: 6px; vertical-align: middle; }
-    .checkbox-student-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface2); }
-    .checkbox-student-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px; cursor: pointer; transition: background 0.15s; user-select: none; }
-    .checkbox-student-item:hover { background: var(--surface); }
-    .checkbox-student-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
-    .checkbox-student-name { font-size: 14px; font-weight: 500; }
-    .checkbox-student-item:has(input:checked) { background: rgba(99,102,241,0.1); }
 
     /* PAGINATION */
     .pagination-wrap { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -274,6 +263,16 @@
     <h1>📅 Расписание занятий</h1>
     <p>{% if is_archive %}Архив прошедших занятий{% elif user.role == 'student' %}Ваши предстоящие занятия{% elif user.role == 'teacher' %}Ваши занятия и ученики{% else %}Все занятия студии{% endif %}</p>
 </div>
+
+{% if user.role == 'student' %}
+<div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:14px 20px;margin-bottom:18px;">
+    <span style="font-size:20px;">💰</span>
+    <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Ваш баланс</div>
+        <div style="font-size:22px;font-weight:800;{% if user.balance < 0 %}color:var(--red);{% else %}color:var(--green);{% endif %}">{{ user.balance }} ₽</div>
+    </div>
+</div>
+{% endif %}
 
 <!-- ВКЛАДКИ -->
 <div class="tabs">
@@ -489,18 +488,9 @@
                         {{ lesson.get_teacher_name }}
                     {% elif user.role == 'admin' %}
                         <div>👨‍🏫 {{ lesson.get_teacher_name }}</div>
-                        {% with gkey=lesson.group_id|stringformat:"s"|add:"_"|add:lesson.date_time|date:"YmdHi" %}
-                        {% if lesson.group_id and group_students|get_item_exists:gkey %}
-                            <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ group_students|dict_get:gkey|join:", " }} <span class="group-badge">группа</span></div>
-                        {% else %}
-                            <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.get_student_name }}</div>
-                        {% endif %}
-                        {% endwith %}
+                        <div style="color:var(--muted);font-size:12px;margin-top:4px;">🎓 {{ lesson.get_student_name }}</div>
                     {% else %}
-                        {% with gkey=lesson.group_id|stringformat:"s"|add:"_"|add:lesson.date_time|date:"YmdHi" %}
-                        {% if lesson.group_id and group_students|get_item_exists:gkey %}
-                            <span style="font-weight:600;">{{ group_students|dict_get:gkey|join:", " }} <span class="group-badge">группа</span></span>
-                        {% elif lesson.student %}
+                        {% if lesson.student %}
                         <span class="student-display"
                               data-student-id="{{ lesson.student.id }}"
                               data-display-name="{{ lesson.student.get_display_name|escape }}">
@@ -514,7 +504,6 @@
                         {% else %}
                         <span style="color:var(--muted);font-style:italic;">(удалён)</span>
                         {% endif %}
-                        {% endwith %}
                     {% endif %}
                 </td>
                 <td>
@@ -600,28 +589,16 @@
                 <span class="lc-label">{% if user.role == 'admin' %}Участники{% elif user.role == 'student' %}Учитель{% else %}Ученик{% endif %}</span>
                 <span style="font-weight:600;">
                     {% if user.role == 'student' %}{{ lesson.get_teacher_name }}
+                    {% elif user.role == 'admin' %}👨‍🏫 {{ lesson.get_teacher_name }} &nbsp;·&nbsp; 🎓 {{ lesson.get_student_name }}
                     {% else %}
-                        {% with gkey=lesson.group_id|stringformat:"s"|add:"_"|add:lesson.date_time|date:"YmdHi" %}
-                        {% if user.role == 'admin' %}
-                            👨‍🏫 {{ lesson.get_teacher_name }} &nbsp;·&nbsp;
-                            {% if lesson.group_id and group_students|get_item_exists:gkey %}
-                                🎓 {{ group_students|dict_get:gkey|join:", " }} <span class="group-badge">группа</span>
-                            {% else %}
-                                🎓 {{ lesson.get_student_name }}
-                            {% endif %}
-                        {% else %}
-                            {% if lesson.group_id and group_students|get_item_exists:gkey %}
-                                <span>{{ group_students|dict_get:gkey|join:", " }} <span class="group-badge">группа</span></span>
-                            {% elif lesson.student %}
-                            <span class="student-display"
-                                  data-student-id="{{ lesson.student.id }}"
-                                  data-display-name="{{ lesson.student.get_display_name|escape }}">
-                                {% if student_notes %}{% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}{% endif %}
-                                {% if not student_notes or not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
-                            </span>
-                            {% else %}<span style="color:var(--muted);font-style:italic;">(удалён)</span>{% endif %}
-                        {% endif %}
-                        {% endwith %}
+                        {% if lesson.student %}
+                        <span class="student-display"
+                              data-student-id="{{ lesson.student.id }}"
+                              data-display-name="{{ lesson.student.get_display_name|escape }}">
+                            {% if student_notes %}{% for k,v in student_notes.items %}{% if k == lesson.student.id %}🏷 {{ v }}{% endif %}{% endfor %}{% endif %}
+                            {% if not student_notes or not student_notes|get_item_exists:lesson.student.id %}{{ lesson.student.get_display_name }}{% endif %}
+                        </span>
+                        {% else %}<span style="color:var(--muted);font-style:italic;">(удалён)</span>{% endif %}
                     {% endif %}
                 </span>
             </div>
@@ -708,17 +685,8 @@
 {% if not is_archive and user.role != 'student' %}
 <div class="add-form-card" id="add-lesson-form">
     <h3>➕ Добавить новое занятие</h3>
-
-    <!-- Вкладки -->
-    <div class="lesson-tabs">
-        <button type="button" class="lesson-tab active" onclick="switchTab('individual', this)">👤 Индивидуальное</button>
-        <button type="button" class="lesson-tab" onclick="switchTab('group', this)">👥 Групповое</button>
-    </div>
-
-    <!-- Форма: Индивидуальное -->
-    <form method="post" id="form-individual">
+    <form method="post">
         {% csrf_token %}
-        <input type="hidden" name="lesson_type" value="individual">
         <div class="form-row form-row-main">
             {% if user.role == 'admin' %}
             <div class="form-group">
@@ -738,18 +706,27 @@
             </div>
             <div class="form-group">
                 <label>Ученик</label>
-                <select name="student" required>
+                <select name="student" id="studentSelect" required>
                     <option value="">— Выберите —</option>
                     {% for u in students %}
-                    <option value="{{ u.id }}">
-                        {% if user.role == 'teacher' and student_notes %}{% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}{% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}{% else %}{{ u.get_display_name }}{% endif %}
+                    <option value="{{ u.id }}" data-display-name="{{ u.get_display_name }}">
+                        {% if user.role == 'teacher' %}
+                            {% if student_notes %}
+                                {% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}
+                                {% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}
+                            {% else %}
+                                {{ u.get_display_name }}
+                            {% endif %}
+                        {% else %}
+                            {{ u.get_display_name }}
+                        {% endif %}
                     </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label>Дата и время</label>
-                <input type="datetime-local" name="date_time" required>
+                <input type="datetime-local" id="lesson_date_time" name="date_time" required>
             </div>
             <div class="form-group">
                 <label>Повторений (недель)</label>
@@ -760,57 +737,6 @@
         <div style="display:flex;flex-direction:column;gap:10px;">
             {% if conflict_error %}<div class="conflict-error">{{ conflict_error }}</div>{% endif %}
             <button type="submit" class="btn-create">✓ Создать занятие</button>
-        </div>
-    </form>
-
-    <!-- Форма: Групповое -->
-    <form method="post" id="form-group" style="display:none;">
-        {% csrf_token %}
-        <input type="hidden" name="lesson_type" value="group">
-        <div class="form-row form-row-main">
-            {% if user.role == 'admin' %}
-            <div class="form-group">
-                <label>Учитель</label>
-                <select name="teacher" required>
-                    <option value="">— Выберите —</option>
-                    {% for t in teachers %}<option value="{{ t.id }}">{{ t.get_display_name }}</option>{% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="form-group">
-                <label>Направление</label>
-                <select name="subject" required>
-                    <option value="">— Выберите —</option>
-                    {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="form-group" style="grid-column: 1 / -1;">
-                <label>Ученики</label>
-                <div class="checkbox-student-list">
-                    {% for u in students %}
-                    <label class="checkbox-student-item">
-                        <input type="checkbox" name="student" value="{{ u.id }}" class="group-student-cb">
-                        <span class="checkbox-student-name">
-                            {% if user.role == 'teacher' and student_notes %}{% for k,v in student_notes.items %}{% if k == u.id %}{{ v }} ({{ u.get_display_name }}){% endif %}{% endfor %}{% if not student_notes|get_item_exists:u.id %}{{ u.get_display_name }}{% endif %}{% else %}{{ u.get_display_name }}{% endif %}
-                        </span>
-                    </label>
-                    {% endfor %}
-                </div>
-                <div id="group-student-error" style="color:#f87171;font-size:12px;display:none;margin-top:6px;">Выберите хотя бы одного ученика</div>
-            </div>
-            <div class="form-group">
-                <label>Дата и время</label>
-                <input type="datetime-local" name="date_time" required>
-            </div>
-            <div class="form-group">
-                <label>Повторений (недель)</label>
-                <input type="number" name="repeat_count" value="1" min="1" max="52">
-                <span class="form-hint">1 = разово, 4 = 4 недели подряд...</span>
-            </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-            {% if conflict_error %}<div class="conflict-error">{{ conflict_error }}</div>{% endif %}
-            <button type="button" class="btn-create" onclick="submitGroupForm(this)">✓ Создать групповое занятие</button>
         </div>
     </form>
 </div>
@@ -836,26 +762,6 @@
     });
 
     const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-    // ── Вкладки формы создания занятия ──────────
-    function switchTab(tab, btn) {
-        document.querySelectorAll('.lesson-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('form-individual').style.display = tab === 'individual' ? '' : 'none';
-        document.getElementById('form-group').style.display = tab === 'group' ? '' : 'none';
-    }
-
-    function submitGroupForm(btn) {
-        const form = document.getElementById('form-group');
-        const checked = form.querySelectorAll('input[name="student"]:checked');
-        const err = document.getElementById('group-student-error');
-        if (checked.length === 0) {
-            err.style.display = 'block';
-            return;
-        }
-        err.style.display = 'none';
-        form.submit();
-    }
 
     // ── Массовый выбор ────────────────────────────
     let multiSelectActive = false;

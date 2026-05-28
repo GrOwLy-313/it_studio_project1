@@ -10,6 +10,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='student')
     salary_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_finished = models.BooleanField(default=False, verbose_name='Обучение завершено')
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

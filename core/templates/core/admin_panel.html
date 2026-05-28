@@ -30,6 +30,10 @@
     .list-item .item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
     .btn-del { padding: 5px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; color: #fca5a5; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; }
     .btn-del:hover { background: rgba(239,68,68,0.2); }
+    .btn-finish { padding: 5px 12px; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.25); border-radius: 6px; color: #fde68a; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Manrope', sans-serif; }
+    .btn-finish:hover { background: rgba(234,179,8,0.2); }
+    .btn-finish-active { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.25); color: #86efac; }
+    .btn-finish-active:hover { background: rgba(34,197,94,0.2); }
 
     .price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .price-row:last-child { border-bottom: none; }
@@ -234,12 +238,21 @@
         </form>
         <div style="margin-top:20px;max-height:320px;overflow-y:auto;padding-right:4px;" id="studentsList">
             {% for s in students %}
-            <div class="list-item" id="student-{{ s.id }}">
+            <div class="list-item" id="student-{{ s.id }}" {% if s.is_finished %}style="opacity:0.6;"{% endif %}>
                 <div>
-                    <div class="item-name">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</div>
+                    <div class="item-name">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}{% if s.is_finished %} <span style="font-size:11px;background:var(--red);color:#fff;border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle;">Завершён</span>{% endif %}</div>
                     <div class="item-sub" style="font-family:'JetBrains Mono',monospace;">{{ s.username }}</div>
                 </div>
-                <button class="btn-del" data-user-id="{{ s.id }}" data-elem-id="student-{{ s.id }}" onclick="deleteUser(this)">Удалить</button>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                    <button class="btn-finish {% if s.is_finished %}btn-finish-active{% endif %}"
+                        data-user-id="{{ s.id }}"
+                        data-is-finished="{{ s.is_finished|yesno:'true,false' }}"
+                        onclick="toggleFinished(this)"
+                        title="{% if s.is_finished %}Возобновить обучение{% else %}Завершить обучение{% endif %}">
+                        {% if s.is_finished %}↩ Возобновить{% else %}✓ Завершить{% endif %}
+                    </button>
+                    <button class="btn-del" data-user-id="{{ s.id }}" data-elem-id="student-{{ s.id }}" onclick="deleteUser(this)">Удалить</button>
+                </div>
             </div>
             {% empty %}<p style="color:var(--muted);font-size:13px;margin-top:10px;">Учеников пока нет</p>{% endfor %}
         </div>
@@ -301,9 +314,9 @@
                 <div class="assign-form">
                     <div>
                         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Ученик</div>
-                        <select name="student_id" required style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;width:100%;margin-bottom:16px;">
+                        <select name="student_id" id="assignStudentSelect" required style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-family:'Manrope',sans-serif;font-size:14px;outline:none;width:100%;margin-bottom:16px;">
                             <option value="">— Выберите ученика —</option>
-                            {% for s in students %}<option value="{{ s.id }}">{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}</option>{% endfor %}
+                            {% for s in students %}<option value="{{ s.id }}" {% if s.is_finished %}style="color:var(--muted);"{% endif %}>{% if s.first_name %}{{ s.first_name }}{% else %}{{ s.username }}{% endif %}{% if s.is_finished %} (завершён){% endif %}</option>{% endfor %}
                         </select>
                     </div>
                     <div>
@@ -475,6 +488,14 @@ document.getElementById('createStudentForm').addEventListener('submit', async (e
             if (json.next_login) {
                 document.getElementById('studentLoginInput').value = json.next_login;
             }
+            // Добавляем нового ученика в select формы привязки
+            const assignSelect = document.getElementById('assignStudentSelect');
+            if (assignSelect) {
+                const opt = document.createElement('option');
+                opt.value = json.id;
+                opt.textContent = displayName;
+                assignSelect.appendChild(opt);
+            }
         }
     } catch(e) { showToast('Ошибка', true); }
 });
@@ -521,6 +542,61 @@ async function deleteUser(btn) {
             const el = document.getElementById(elemId);
             if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
             showToast('✓ Пользователь удалён');
+        } else {
+            showToast('⚠ ' + (json.message || 'Ошибка'), true);
+        }
+    } catch(e) { showToast('Ошибка', true); }
+}
+
+// ── Завершить / возобновить обучение ──────────
+async function toggleFinished(btn) {
+    const userId = btn.dataset.userId;
+    const isFinished = btn.dataset.isFinished === 'true';
+    const action = isFinished ? 'возобновить обучение' : 'завершить обучение';
+    if (!confirm(`Вы уверены, что хотите ${action} для этого ученика?`)) return;
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    try {
+        const resp = await fetch(`/student/${userId}/toggle-finished/`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: data
+        });
+        const json = await resp.json();
+        if (json.status === 'ok') {
+            const nowFinished = json.is_finished;
+            const item = document.getElementById(`student-${userId}`);
+            if (item) {
+                item.style.opacity = nowFinished ? '0.6' : '1';
+                const namDiv = item.querySelector('.item-name');
+                const existingBadge = namDiv.querySelector('span');
+                if (nowFinished) {
+                    if (!existingBadge) {
+                        const badge = document.createElement('span');
+                        badge.style.cssText = 'font-size:11px;background:var(--red);color:#fff;border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle;';
+                        badge.textContent = 'Завершён';
+                        namDiv.appendChild(badge);
+                    }
+                } else {
+                    existingBadge?.remove();
+                }
+                btn.dataset.isFinished = nowFinished ? 'true' : 'false';
+                btn.textContent = nowFinished ? '↩ Возобновить' : '✓ Завершить';
+                btn.title = nowFinished ? 'Возобновить обучение' : 'Завершить обучение';
+                if (nowFinished) btn.classList.add('btn-finish-active');
+                else btn.classList.remove('btn-finish-active');
+            }
+            // Обновляем select привязки
+            const assignSelect = document.getElementById('assignStudentSelect');
+            if (assignSelect) {
+                const opt = assignSelect.querySelector(`option[value="${userId}"]`);
+                if (opt) {
+                    const baseName = opt.textContent.replace(' (завершён)', '');
+                    opt.textContent = nowFinished ? baseName + ' (завершён)' : baseName;
+                    opt.style.color = nowFinished ? 'var(--muted)' : '';
+                }
+            }
+            showToast(nowFinished ? '✓ Обучение завершено' : '✓ Обучение возобновлено');
         } else {
             showToast('⚠ ' + (json.message || 'Ошибка'), true);
         }

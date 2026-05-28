@@ -105,7 +105,7 @@ STATICFILES_DIRS = [BASE_DIR / 'core' / 'static']
 AUTH_USER_MODEL = 'core.User'
 LOGIN_URL = 'login'
 LOGOUT_REDIRECT_URL = 'login'
-LOGIN_REDIRECT_URL = 'calendar'
+LOGIN_REDIRECT_URL = 'post_login_redirect'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
