@@ -8,7 +8,7 @@ class User(AbstractUser):
         ('student', 'Ученик'),
     )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='student')
-    salary_per_lesson = models.DecimalField(max_digits=10, decimal_places=2, default=500.00)
+    # salary_per_lesson удалён — нигде не использовался, ставки хранятся в TeacherRate
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_finished = models.BooleanField(default=False, verbose_name='Обучение завершено')
 
@@ -104,7 +104,7 @@ class Lesson(models.Model):
         ]
 
     def __str__(self):
-        teacher_name = self.teacher.username if self.teacher else '(удалён)'
+        # Исправлено: teacher_name вычислялся, но не использовался в return
         student_name = self.student.username if self.student else '(удалён)'
         subject_name = self.subject.name if self.subject else '(удалён)'
         return f"{subject_name} - {student_name}"
